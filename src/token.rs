@@ -25,10 +25,10 @@ impl fmt::Display for Object {
 
 #[derive(Debug)]
 pub struct Token {
-    ttype: TokenType,
-    lexeme: String,
-    literal: Option<Object>,
-    line: usize,
+    pub(crate) ttype: TokenType,
+    pub(crate) lexeme: String,
+    pub(crate) literal: Option<Object>,
+    pub(crate) line: usize,
 }
 
 impl Token {
