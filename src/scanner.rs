@@ -97,6 +97,11 @@ impl Scanner {
                             self.advance();
                         }
                     }
+                } else if self.is_match('*') {
+                    let start = self.current - 1;
+                    let start_line = self.line;
+                    self.advance();
+                    self.scan_comment(start, start_line)?;
                 } else {
                     self.add_token(TokenType::Slash);
                 }
@@ -120,6 +125,33 @@ impl Scanner {
             }
         }
         Ok(())
+    }
+    // comment like /*  */
+    fn scan_comment(&mut self, start: usize, start_line: usize) -> Result<(), LoxError> {
+        while !self.is_match('*') && !self.is_at_end() {
+            self.advance();
+            if self.peek() == Some('\n') {
+                self.line += 1;
+            }
+        }
+
+        if self.is_match('*') && self.peek_next() == Some('/') {
+            self.advance();
+            self.advance();
+            self.print_comment(start, start_line);
+            return Ok(());
+        } else {
+            self.advance();
+            return self.scan_comment(start, start_line);
+        }
+        Err(LoxError::error(self.line, "UnClosed comment.".to_string()))
+    }
+
+    fn print_comment(&self, start: usize, start_line: usize) {
+        println!(
+            "Comment: {}",
+            self.source[start..self.current].iter().collect::<String>()
+        );
     }
 
     fn identifier(&mut self) {
@@ -205,12 +237,8 @@ impl Scanner {
 
     fn add_token_object(&mut self, ttype: TokenType, literal: Option<Object>) {
         let lexeme = self.source[self.start..self.current].iter().collect();
-        self.tokens.push(Token {
-            ttype,
-            lexeme,
-            literal,
-            line: self.line,
-        })
+        self.tokens
+            .push(Token::new(ttype, lexeme, literal, self.line))
     }
 
     fn is_match(&mut self, expected: char) -> bool {

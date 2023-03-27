@@ -13,3 +13,6 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+# These files are automatically generated
+src/expr.rs

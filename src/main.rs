@@ -6,9 +6,9 @@ use std::io::{self, stdout, BufRead, Write};
 mod error;
 use error::*;
 mod token_type;
-use token_type::*;
+
 mod token;
-use token::*;
+
 mod scanner;
 use scanner::*;
 
@@ -40,7 +40,7 @@ fn run_file(path: &str) -> io::Result<()> {
 fn run_prompt() {
     let stdin = io::stdin();
     print!("> ");
-    stdout().flush();
+    stdout().flush().expect("Error: flush Error");
     for line in stdin.lock().lines() {
         if let Ok(line) = line {
             if line.is_empty() {
@@ -52,7 +52,7 @@ fn run_prompt() {
             break;
         }
         print!("> ");
-        stdout().flush();
+        stdout().flush().expect("Error: flush Error");
     }
 }
 

@@ -55,7 +55,8 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{:?} {} {}",
+            "{} {:?} {} {}",
+            self.line,
             self.ttype,
             self.lexeme,
             if let Some(literal) = &self.literal {
