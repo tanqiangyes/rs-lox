@@ -135,19 +135,21 @@ impl Scanner {
             }
         }
 
-        if self.is_match('*') && self.peek_next() == Some('/') {
-            self.advance();
-            self.advance();
-            self.print_comment(start, start_line);
-            return Ok(());
-        } else {
-            self.advance();
-            return self.scan_comment(start, start_line);
+        if !self.is_at_end() {
+            return if self.is_match('*') && self.peek_next() == Some('/') {
+                self.advance();
+                self.advance();
+                self.print_comment(start, start_line);
+                Ok(())
+            } else {
+                self.advance();
+                self.scan_comment(start, start_line)
+            };
         }
         Err(LoxError::error(self.line, "UnClosed comment.".to_string()))
     }
 
-    fn print_comment(&self, start: usize, start_line: usize) {
+    fn print_comment(&self, start: usize, _start_line: usize) {
         println!(
             "Comment: {}",
             self.source[start..self.current].iter().collect::<String>()

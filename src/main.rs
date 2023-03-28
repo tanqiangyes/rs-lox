@@ -9,7 +9,9 @@ mod token_type;
 
 mod token;
 
+mod expr;
 mod scanner;
+
 use scanner::*;
 
 fn main() {
