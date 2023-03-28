@@ -27,8 +27,8 @@ fn define_ast(output_dir: &String, base_name: &String, types: &[String]) -> io::
     let mut file = File::create(path)?;
     let mut tree_types = Vec::new();
 
-    write!(file, "use crate::error::*;\n")?;
-    write!(file, "use crate::token::*;\n")?;
+    writeln!(file, "use crate::error::*;")?;
+    writeln!(file, "use crate::token::*;")?;
 
     for ttype in types {
         let (base_class_name, args) = ttype.split_once(':').unwrap();
@@ -58,7 +58,7 @@ fn define_ast(output_dir: &String, base_name: &String, types: &[String]) -> io::
     }
     writeln!(file, "}}\n")?;
 
-    writeln!(file, "impl {base_name} {{");
+    writeln!(file, "impl {base_name} {{")?;
     writeln!(
         file,
         "     pub fn accept<R>(&self, visitor: &dyn {}Visitor<R>) -> Result<R, LoxError> {{",

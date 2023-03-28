@@ -28,7 +28,7 @@ impl Scanner {
             match self.scan_token() {
                 Ok(_) => {}
                 Err(e) => {
-                    e.report("".to_string());
+                    // e.report("".to_string());
                     had_error = Some(e);
                 }
             }

@@ -10,9 +10,14 @@ mod token_type;
 mod token;
 
 mod expr;
-mod scanner;
+mod parser;
+use parser::*;
 
+mod scanner;
 use scanner::*;
+
+mod ast_printer;
+use ast_printer::*;
 
 fn main() {
     let args: Vec<String> = args().collect();
@@ -62,8 +67,13 @@ fn run(source: String) -> Result<(), LoxError> {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens()?;
 
-    for token in tokens {
-        println!("{:?}", token);
+    let mut parser = Parser::new(tokens);
+    match parser.parse() {
+        None => {}
+        Some(expr) => {
+            let printer = AstPrinter {};
+            println!("AST Printer:\n{}", printer.print(&expr)?);
+        }
     }
     Ok(())
 }
