@@ -1,5 +1,6 @@
 use crate::error::LoxError;
 use crate::expr::{BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr};
+use crate::object::Object;
 use crate::token::*;
 use crate::token_type::*;
 
@@ -96,18 +97,18 @@ impl<'a> Parser<'a> {
             }));
         }
 
-        Ok(self.primary()?)
+        self.primary()
     }
 
     fn primary(&mut self) -> Result<Expr, LoxError> {
         if self.is_match(&[TokenType::False]) {
             return Ok(Expr::Literal(LiteralExpr {
-                value: Some(Object::False),
+                value: Some(Object::Bool(false)),
             }));
         };
         if self.is_match(&[TokenType::True]) {
             return Ok(Expr::Literal(LiteralExpr {
-                value: Some(Object::True),
+                value: Some(Object::Bool(true)),
             }));
         };
         if self.is_match(&[TokenType::Nil]) {
@@ -124,18 +125,15 @@ impl<'a> Parser<'a> {
 
         if self.is_match(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(
-                TokenType::RightParen,
-                "Expect ')' after expression.".to_string(),
-            )?;
+            self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
             return Ok(Expr::Grouping(GroupingExpr {
                 expression: Box::new(expr),
             }));
         }
-        Err(LoxError::error(0, "Expect expression.".to_string()))
+        Err(LoxError::error(0, "Expect expression."))
     }
 
-    fn consume(&mut self, ttype: TokenType, message: String) -> Result<Token, LoxError> {
+    fn consume(&mut self, ttype: TokenType, message: &str) -> Result<Token, LoxError> {
         if self.check(ttype) {
             Ok(self.advance().dup())
         } else {
@@ -143,7 +141,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error(token: Token, message: String) -> LoxError {
+    fn error(token: Token, message: &str) -> LoxError {
         LoxError::parse_error(token, message)
     }
 

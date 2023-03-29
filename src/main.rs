@@ -16,7 +16,12 @@ use parser::*;
 mod scanner;
 use scanner::*;
 
+mod object;
+
 mod ast_printer;
+mod interpreter;
+
+use crate::interpreter::Interpreter;
 use ast_printer::*;
 
 fn main() {
@@ -73,6 +78,8 @@ fn run(source: String) -> Result<(), LoxError> {
         Some(expr) => {
             let printer = AstPrinter {};
             println!("AST Printer:\n{}", printer.print(&expr)?);
+            // let interreter = Interpreter {};
+            // interreter
         }
     }
     Ok(())

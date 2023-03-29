@@ -1,29 +1,9 @@
+use crate::object::Object;
 use crate::token_type::*;
 use std::fmt;
 use std::fmt::Formatter;
 
-#[derive(Debug, Clone)]
-pub enum Object {
-    Num(f64),
-    Str(String),
-    Nil,
-    True,
-    False,
-}
-
-impl fmt::Display for Object {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Object::Num(n) => write!(f, "{n}"),
-            Object::Str(n) => write!(f, "\"{n}\""),
-            Object::Nil => write!(f, "nil"),
-            Object::True => write!(f, "true"),
-            Object::False => write!(f, "false"),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Token {
     pub(crate) ttype: TokenType,
     pub(crate) lexeme: String,

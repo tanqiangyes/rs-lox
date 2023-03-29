@@ -1,4 +1,5 @@
 use crate::error::LoxError;
+use crate::object::Object;
 use crate::token::*;
 use crate::token_type::*;
 
@@ -120,7 +121,7 @@ impl Scanner {
                 if c.is_alphanumeric() || c == '_' {
                     self.identifier();
                 } else {
-                    return Err(LoxError::error(self.line, "Unknown token type".to_string()));
+                    return Err(LoxError::error(self.line, "Unknown token type"));
                 }
             }
         }
@@ -146,7 +147,7 @@ impl Scanner {
                 self.scan_comment(start, start_line)
             };
         }
-        Err(LoxError::error(self.line, "UnClosed comment.".to_string()))
+        Err(LoxError::error(self.line, "UnClosed comment."))
     }
 
     fn print_comment(&self, start: usize, _start_line: usize) {
@@ -212,10 +213,7 @@ impl Scanner {
             self.advance();
         }
         if self.is_at_end() {
-            return Err(LoxError::error(
-                self.line,
-                "Unterminated string.".to_string(),
-            ));
+            return Err(LoxError::error(self.line, "Unterminated string."));
         }
 
         self.advance();
