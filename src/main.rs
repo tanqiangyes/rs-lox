@@ -21,7 +21,7 @@ mod object;
 mod ast_printer;
 mod interpreter;
 
-use crate::interpreter::Interpreter;
+
 use ast_printer::*;
 
 fn main() {

@@ -1,3 +1,6 @@
+use crate::error::LoxError;
+use crate::token::Token;
+use crate::token_type::TokenType;
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -26,6 +29,21 @@ impl fmt::Display for Object {
             }
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
+        }
+    }
+}
+
+impl Object {
+    pub fn check_type(&self, other: &Object) -> Result<(), LoxError> {
+        match (self, other) {
+            (Object::Num(_), Object::Num(_))
+            | (Object::Str(_), Object::Str(_))
+            | (Object::Bool(_), Object::Bool(_))
+            | (Object::Nil, Object::Nil) => Ok(()),
+            _ => Err(LoxError::parse_error(
+                Token::eof(0),
+                "Both operands of the comparison expression must be of the same type",
+            )),
         }
     }
 }
@@ -86,14 +104,6 @@ impl PartialEq<Self> for Object {
         match (self, other) {
             (Object::Num(left), Object::Num(right)) => left.eq(right),
             (Object::Str(left), Object::Str(right)) => left.eq(right),
-            // (Object::Str(left), Object::Num(right)) => {
-            //     let right = right.to_string();
-            //     left.eq(&right)
-            // }
-            // (Object::Num(left), Object::Str(right)) => {
-            //     let left = left.to_string();
-            //     left.eq(right)
-            // }
             (Object::Bool(left), Object::Bool(right)) => left.eq(right),
             (Object::Nil, Object::Nil) => true,
             _ => false,
@@ -106,14 +116,6 @@ impl PartialOrd<Self> for Object {
         match (self, other) {
             (Object::Num(left), Object::Num(right)) => left.partial_cmp(right),
             (Object::Str(left), Object::Str(right)) => left.partial_cmp(right),
-            // (Object::Str(left), Object::Num(right)) => {
-            //     let right = right.to_string();
-            //     left.partial_cmp(&right)
-            // }
-            // (Object::Num(left), Object::Str(right)) => {
-            //     let left = left.to_string();
-            //     left.partial_cmp(right)
-            // }
             (Object::Bool(left), Object::Bool(right)) => left.partial_cmp(right),
             (Object::Nil, Object::Nil) => Some(Ordering::Equal),
             _ => None,

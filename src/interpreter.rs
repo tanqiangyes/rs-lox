@@ -15,12 +15,30 @@ impl ExprVisitor<Object> for Interpreter {
             TokenType::Minus => left - right,
             TokenType::Slash => left / right,
             TokenType::Star => left * right,
-            TokenType::Greater => Object::Bool(left > right),
-            TokenType::GreaterEqual => Object::Bool(left >= right),
-            TokenType::Less => Object::Bool(left < right),
-            TokenType::LessEqual => Object::Bool(left <= right),
-            TokenType::Equal => Object::Bool(left == right),
-            TokenType::BangEqual => Object::Bool(left != right),
+            TokenType::Greater => {
+                left.check_type(&right)?;
+                Object::Bool(left > right)
+            }
+            TokenType::GreaterEqual => {
+                left.check_type(&right)?;
+                Object::Bool(left >= right)
+            }
+            TokenType::Less => {
+                left.check_type(&right)?;
+                Object::Bool(left < right)
+            }
+            TokenType::LessEqual => {
+                left.check_type(&right)?;
+                Object::Bool(left <= right)
+            }
+            TokenType::Equal => {
+                left.check_type(&right)?;
+                Object::Bool(left == right)
+            }
+            TokenType::BangEqual => {
+                left.check_type(&right)?;
+                Object::Bool(left != right)
+            }
             _ => {
                 return Err(LoxError::error(
                     expr.operator.line,
@@ -29,14 +47,17 @@ impl ExprVisitor<Object> for Interpreter {
             }
         };
         if result == Object::ArithmeticError {
-            Err(LoxError::error(expr.operator.line, "Illegal expression"))
+            Err(LoxError::runtime_error(
+                expr.operator.dup(),
+                "Illegal expression",
+            ))
         } else {
             Ok(result)
         }
     }
 
     fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxError> {
-        return self.evaluate(&expr.expression);
+        self.evaluate(&expr.expression)
     }
 
     fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
@@ -354,13 +375,27 @@ mod tests {
         assert_eq!(result.ok(), Some(Object::Bool(true)));
     }
 
+    #[test]
+    fn test_str_equal_num() {
+        let terp = Interpreter {};
+        let binary_expr = BinaryExpr {
+            left: make_literal_string("1.0".to_string()),
+            operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
+            right: make_literal_number(1.0),
+        };
+
+        let result = terp.visit_binary_expr(&binary_expr);
+
+        assert!(result.is_err());
+    }
+    //
     // #[test]
-    // fn test_str_equal_num() {
+    // fn test_num_to_str() {
     //     let terp = Interpreter {};
     //     let binary_expr = BinaryExpr {
-    //         left: make_literal_string("0.0".to_string()),
+    //         left: make_literal_number(1.0),
     //         operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
-    //         right: make_literal_number(0.0),
+    //         right: make_literal_string("1.0".to_string()),
     //     };
     //
     //     let result = terp.visit_binary_expr(&binary_expr);
@@ -370,12 +405,12 @@ mod tests {
     // }
     //
     // #[test]
-    // fn test_num_to_str() {
+    // fn test_num_to_str_greater() {
     //     let terp = Interpreter {};
     //     let binary_expr = BinaryExpr {
-    //         left: make_literal_number(1.0),
-    //         operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
-    //         right: make_literal_string("1.0".to_string()),
+    //         left: make_literal_number(10.0),
+    //         operator: make_operator(TokenType::Greater, ">".to_string(), None, 123),
+    //         right: make_literal_string("4.0skjdfsjkj".to_string()),
     //     };
     //
     //     let result = terp.visit_binary_expr(&binary_expr);
