@@ -9,43 +9,79 @@ impl ExprVisitor<Object> for Interpreter {
     fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxError> {
         let left = self.evaluate(&expr.left)?;
         let right = self.evaluate(&expr.right)?;
-
-        let result = match expr.operator.token_type() {
-            TokenType::Plus => left + right,
-            TokenType::Minus => left - right,
-            TokenType::Slash => left / right,
-            TokenType::Star => left * right,
-            TokenType::Greater => {
-                left.check_type(&right)?;
-                Object::Bool(left > right)
-            }
-            TokenType::GreaterEqual => {
-                left.check_type(&right)?;
-                Object::Bool(left >= right)
-            }
-            TokenType::Less => {
-                left.check_type(&right)?;
-                Object::Bool(left < right)
-            }
-            TokenType::LessEqual => {
-                left.check_type(&right)?;
-                Object::Bool(left <= right)
-            }
-            TokenType::Equal => {
-                left.check_type(&right)?;
-                Object::Bool(left == right)
-            }
-            TokenType::BangEqual => {
-                left.check_type(&right)?;
-                Object::Bool(left != right)
-            }
+        let op = expr.operator.token_type();
+        let result = match (left, right) {
+            (Object::Num(left), Object::Num(right)) => match op {
+                TokenType::Plus => Object::Num(left + right),
+                TokenType::Minus => Object::Num(left - right),
+                TokenType::Slash => Object::Num(left / right),
+                TokenType::Star => Object::Num(left * right),
+                TokenType::Greater => Object::Bool(left > right),
+                TokenType::GreaterEqual => Object::Bool(left >= right),
+                TokenType::Less => Object::Bool(left < right),
+                TokenType::LessEqual => Object::Bool(left <= right),
+                TokenType::Equal => Object::Bool(left == right),
+                TokenType::BangEqual => Object::Bool(left != right),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to num binary expression",
+                    ));
+                }
+            },
+            (Object::Str(left), Object::Str(right)) => match op {
+                TokenType::Plus => Object::Str(left + &*right),
+                TokenType::Greater => Object::Bool(left > right),
+                TokenType::GreaterEqual => Object::Bool(left >= right),
+                TokenType::Less => Object::Bool(left < right),
+                TokenType::LessEqual => Object::Bool(left <= right),
+                TokenType::Equal => Object::Bool(left == right),
+                TokenType::BangEqual => Object::Bool(left != right),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to string binary expression",
+                    ));
+                }
+            },
+            (Object::Nil, Object::Nil) => match op {
+                TokenType::Equal => Object::Bool(true),
+                TokenType::BangEqual => Object::Bool(false),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to nil binary expression",
+                    ));
+                }
+            },
+            (Object::Nil, _) => match op {
+                TokenType::Equal => Object::Bool(false),
+                TokenType::BangEqual => Object::Bool(true),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to nil eq other binary expression",
+                    ));
+                }
+            },
+            (Object::Bool(left), Object::Bool(right)) => match op {
+                TokenType::Equal => Object::Bool(left == right),
+                TokenType::BangEqual => Object::Bool(left != right),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to bool binary expression",
+                    ));
+                }
+            },
             _ => {
                 return Err(LoxError::error(
                     expr.operator.line,
-                    "Unreachable according to binary expression",
-                ));
+                    "Both operands of the comparison expression must be of the same type",
+                ))
             }
         };
+
         if result == Object::ArithmeticError {
             Err(LoxError::runtime_error(
                 expr.operator.dup(),
@@ -114,6 +150,12 @@ mod tests {
     fn make_literal_bool(n: bool) -> Box<Expr> {
         Box::new(Expr::Literal(LiteralExpr {
             value: Some(Object::Bool(n)),
+        }))
+    }
+
+    fn make_literal_nil() -> Box<Expr> {
+        Box::new(Expr::Literal(LiteralExpr {
+            value: Some(Object::Nil),
         }))
     }
 
@@ -222,8 +264,8 @@ mod tests {
         };
 
         let result = terp.visit_binary_expr(&binary_expr);
-
-        assert!(result.is_ok());
+        println!("{:?}", result.as_ref().err());
+        assert!(result.is_err());
     }
 
     #[test]
@@ -385,37 +427,63 @@ mod tests {
         };
 
         let result = terp.visit_binary_expr(&binary_expr);
-
+        // println!("{:?}", result.as_ref().err());
         assert!(result.is_err());
     }
-    //
-    // #[test]
-    // fn test_num_to_str() {
-    //     let terp = Interpreter {};
-    //     let binary_expr = BinaryExpr {
-    //         left: make_literal_number(1.0),
-    //         operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
-    //         right: make_literal_string("1.0".to_string()),
-    //     };
-    //
-    //     let result = terp.visit_binary_expr(&binary_expr);
-    //
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.ok(), Some(Object::Bool(true)));
-    // }
-    //
-    // #[test]
-    // fn test_num_to_str_greater() {
-    //     let terp = Interpreter {};
-    //     let binary_expr = BinaryExpr {
-    //         left: make_literal_number(10.0),
-    //         operator: make_operator(TokenType::Greater, ">".to_string(), None, 123),
-    //         right: make_literal_string("4.0skjdfsjkj".to_string()),
-    //     };
-    //
-    //     let result = terp.visit_binary_expr(&binary_expr);
-    //
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.ok(), Some(Object::Bool(true)));
-    // }
+
+    #[test]
+    fn test_nil_and_other() {
+        let terp = Interpreter {};
+        let binary_expr = BinaryExpr {
+            left: make_literal_nil(),
+            operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
+            right: make_literal_bool(false),
+        };
+
+        let result = terp.visit_binary_expr(&binary_expr);
+
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Object::Bool(false)));
+    }
+
+    #[test]
+    fn test_run_comparison() {
+        let terp = Interpreter {};
+
+        let binary_expr = make_binary_expr_str(
+            "9.0".to_string(),
+            "9.0".to_string(),
+            TokenType::Equal,
+            "==".to_string(),
+            None,
+            123,
+        );
+        let result = terp.visit_binary_expr(&binary_expr);
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Object::Bool(true)));
+
+        let binary_expr = make_binary_expr_str(
+            "9.0".to_string(),
+            "9.0".to_string(),
+            TokenType::Equal,
+            "==".to_string(),
+            None,
+            123,
+        );
+        let result = terp.visit_binary_expr(&binary_expr);
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Object::Bool(true)));
+
+        let binary_expr = make_binary_expr_str(
+            "9.0".to_string(),
+            "9.0".to_string(),
+            TokenType::Equal,
+            "==".to_string(),
+            None,
+            123,
+        );
+        let result = terp.visit_binary_expr(&binary_expr);
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Object::Bool(true)));
+    }
 }

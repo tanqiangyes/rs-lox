@@ -1,6 +1,6 @@
 use crate::error::LoxError;
 use crate::token::Token;
-use crate::token_type::TokenType;
+
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -29,21 +29,6 @@ impl fmt::Display for Object {
             }
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
-        }
-    }
-}
-
-impl Object {
-    pub fn check_type(&self, other: &Object) -> Result<(), LoxError> {
-        match (self, other) {
-            (Object::Num(_), Object::Num(_))
-            | (Object::Str(_), Object::Str(_))
-            | (Object::Bool(_), Object::Bool(_))
-            | (Object::Nil, Object::Nil) => Ok(()),
-            _ => Err(LoxError::parse_error(
-                Token::eof(0),
-                "Both operands of the comparison expression must be of the same type",
-            )),
         }
     }
 }
