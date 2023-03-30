@@ -4,6 +4,7 @@ use std::env::args;
 use std::io::{self, stdout, Write};
 
 // mod ast_printer;
+mod environment;
 mod error;
 mod expr;
 mod interpreter;
@@ -43,7 +44,7 @@ struct Lox {
 impl Lox {
     pub fn new() -> Lox {
         Lox {
-            interpreter: Interpreter {},
+            interpreter: Interpreter::new(),
         }
     }
 
@@ -85,9 +86,8 @@ impl Lox {
         //     println!("{:?}", token);
         // }
         let mut parser = Parser::new(tokens);
-
         let statements = parser.parse()?;
-        if self.interpreter.interpret(statements) {
+        if parser.success() && self.interpreter.interpret(statements) {
             Ok(())
         } else {
             Err(LoxError::error(0, ""))

@@ -1,5 +1,7 @@
 use crate::error::LoxError;
-use crate::expr::{BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr, VariableExpr};
+use crate::expr::{
+    AssignExpr, BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr, VariableExpr,
+};
 use crate::object::Object;
 use crate::stmt::*;
 use crate::token::*;
@@ -8,11 +10,16 @@ use crate::token_type::*;
 pub struct Parser<'a> {
     tokens: &'a [Token],
     current: usize,
+    has_error: bool,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: &[Token]) -> Parser {
-        Parser { tokens, current: 0 }
+        Parser {
+            tokens,
+            current: 0,
+            has_error: false,
+        }
     }
 
     pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxError> {
@@ -39,9 +46,9 @@ impl<'a> Parser<'a> {
     fn var_declaration(&mut self) -> Result<Stmt, LoxError> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
         let initializer = if self.is_match(&[TokenType::Assign]) {
-            self.expression()?
+            Some(self.expression()?)
         } else {
-            return Err(LoxError::error(name.line, "Not a variable declaration."));
+            None
         };
         self.consume(
             TokenType::SemiColon,
@@ -70,8 +77,25 @@ impl<'a> Parser<'a> {
         Ok(Stmt::Expression(ExpressionStmt { expression: value }))
     }
 
+    fn assignment(&mut self) -> Result<Expr, LoxError> {
+        let expr = self.equality()?;
+        if self.is_match(&[TokenType::Assign]) {
+            let equals = self.previous().dup();
+            let value = self.assignment()?;
+
+            if let Expr::Variable(expr) = expr {
+                return Ok(Expr::Assign(AssignExpr {
+                    name: expr.name.dup(),
+                    value: Box::new(value),
+                }));
+            }
+            self.error(equals, "Invalid assignment target.");
+        }
+        Ok(expr)
+    }
+
     fn expression(&mut self) -> Result<Expr, LoxError> {
-        self.equality()
+        self.assignment()
     }
 
     fn equality(&mut self) -> Result<Expr, LoxError> {
@@ -192,11 +216,12 @@ impl<'a> Parser<'a> {
         if self.check(ttype) {
             Ok(self.advance().dup())
         } else {
-            Err(Parser::error(self.peek().dup(), message))
+            Err(self.error(self.peek().dup(), message))
         }
     }
 
-    fn error(token: Token, message: &str) -> LoxError {
+    fn error(&mut self, token: Token, message: &str) -> LoxError {
+        self.has_error = true;
         LoxError::parse_error(token, message)
     }
 
@@ -260,5 +285,9 @@ impl<'a> Parser<'a> {
 
     fn previous(&self) -> &Token {
         self.tokens.get(self.current - 1).unwrap()
+    }
+
+    pub fn success(&self) -> bool {
+        !self.has_error
     }
 }

@@ -1,10 +1,14 @@
+use crate::environment::Environment;
 use crate::error::LoxError;
 use crate::expr::*;
 use crate::object::Object;
 use crate::stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt};
 use crate::token_type::TokenType;
+use std::cell::RefCell;
 
-pub struct Interpreter {}
+pub struct Interpreter {
+    environment: RefCell<Environment>,
+}
 
 impl StmtVisitor<()> for Interpreter {
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
@@ -18,12 +22,29 @@ impl StmtVisitor<()> for Interpreter {
         Ok(())
     }
 
-    fn visit_var_stmt(&self, _stmt: &VarStmt) -> Result<(), LoxError> {
+    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
+        let value = if let Some(initializer) = &stmt.initializer {
+            self.evaluate(initializer)?
+        } else {
+            Object::Nil
+        };
+
+        self.environment
+            .borrow_mut()
+            .define(stmt.name.as_string(), value);
         Ok(())
     }
 }
 
 impl ExprVisitor<Object> for Interpreter {
+    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
+        let value = self.evaluate(&expr.value)?;
+        self.environment
+            .borrow_mut()
+            .assign(&expr.name, value.clone())?;
+        Ok(value)
+    }
+
     fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxError> {
         let left = self.evaluate(&expr.left)?;
         let right = self.evaluate(&expr.right)?;
@@ -152,12 +173,18 @@ impl ExprVisitor<Object> for Interpreter {
         }
     }
 
-    fn visit_variable_expr(&self, _expr: &VariableExpr) -> Result<Object, LoxError> {
-        Ok(Object::Nil)
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
+        self.environment.borrow().get(&expr.name)
     }
 }
 
 impl Interpreter {
+    pub fn new() -> Interpreter {
+        Interpreter {
+            environment: RefCell::new(Environment::new()),
+        }
+    }
+
     fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
         expr.accept(self)
     }
@@ -280,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_unary_minus() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let unary_expr = make_unary_expr(123.0, TokenType::Minus, "-".to_string(), None, 123);
 
         let result = terp.visit_unary_expr(&unary_expr);
@@ -290,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_unary_not() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let unary_expr = make_unary_bool(false, TokenType::Bang, "!".to_string(), None, 123);
 
         let result = terp.visit_unary_expr(&unary_expr);
@@ -300,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_subtraction() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(15.0, 7.0, TokenType::Minus, "-".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -310,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_subtraction_error() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_number(15.0),
             operator: make_operator(TokenType::Minus, "-".to_string(), None, 123),
@@ -324,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_slash() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(14.0, 7.0, TokenType::Slash, "/".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -334,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_star() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(2.0, 7.0, TokenType::Star, "*".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -344,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(2.0, 7.0, TokenType::Plus, "+".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -354,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_str_add() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr_str(
             "jack".to_string(),
             "tan".to_string(),
@@ -371,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_greater_than() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr =
             make_binary_expr(15.0, 10.0, TokenType::Greater, ">".to_string(), None, 123);
 
@@ -382,7 +409,7 @@ mod tests {
 
     #[test]
     fn test_greater_equal_than() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(
             10.0,
             10.0,
@@ -399,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_less_than() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(10.0, 9.0, TokenType::Less, "<".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -409,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_less_greater_than() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr =
             make_binary_expr(9.0, 9.0, TokenType::LessEqual, "<=".to_string(), None, 123);
 
@@ -420,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_equal() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr(9.0, 9.0, TokenType::Equal, "==".to_string(), None, 123);
 
         let result = terp.visit_binary_expr(&binary_expr);
@@ -430,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_equal_str() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = make_binary_expr_str(
             "9.0".to_string(),
             "9.0".to_string(),
@@ -447,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_bang_equal() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr =
             make_binary_expr(9.0, 9.0, TokenType::BangEqual, "!=".to_string(), None, 123);
 
@@ -458,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_nil() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_bool(false),
             operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
@@ -473,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_str_equal_num() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_string("1.0".to_string()),
             operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
@@ -487,7 +514,7 @@ mod tests {
 
     #[test]
     fn test_nil_and_other() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_nil(),
             operator: make_operator(TokenType::Equal, "=".to_string(), None, 123),
@@ -501,43 +528,62 @@ mod tests {
     }
 
     #[test]
-    fn test_run_comparison() {
-        let terp = Interpreter {};
-
-        let binary_expr = make_binary_expr_str(
-            "9.0".to_string(),
-            "9.0".to_string(),
-            TokenType::Equal,
-            "==".to_string(),
-            None,
-            123,
+    fn test_var_defined() {
+        let terp = Interpreter::new();
+        let name = Token::new(TokenType::Identifier, "jack".to_string(), None, 123);
+        let var_stmt = VarStmt {
+            name: name.dup(),
+            initializer: Some(Expr::Literal(LiteralExpr {
+                value: Some(Object::Num(23.0)),
+            })),
+        };
+        assert!(terp.visit_var_stmt(&var_stmt).is_ok());
+        assert_eq!(
+            terp.environment.borrow().get(&name).unwrap(),
+            Object::Num(23.0)
         );
-        let result = terp.visit_binary_expr(&binary_expr);
-        assert!(result.is_ok());
-        assert_eq!(result.ok(), Some(Object::Bool(true)));
+    }
 
-        let binary_expr = make_binary_expr_str(
-            "9.0".to_string(),
-            "9.0".to_string(),
-            TokenType::Equal,
-            "==".to_string(),
-            None,
-            123,
-        );
-        let result = terp.visit_binary_expr(&binary_expr);
-        assert!(result.is_ok());
-        assert_eq!(result.ok(), Some(Object::Bool(true)));
+    #[test]
+    fn test_var_not_defined() {
+        let terp = Interpreter::new();
+        let name = Token::new(TokenType::Identifier, "jack".to_string(), None, 123);
+        let var_stmt = VarStmt {
+            name: name.dup(),
+            initializer: None,
+        };
+        assert!(terp.visit_var_stmt(&var_stmt).is_ok());
+        assert_eq!(terp.environment.borrow().get(&name).unwrap(), Object::Nil);
+    }
 
-        let binary_expr = make_binary_expr_str(
-            "9.0".to_string(),
-            "9.0".to_string(),
-            TokenType::Equal,
-            "==".to_string(),
-            None,
-            123,
+    #[test]
+    fn test_var_expr() {
+        let terp = Interpreter::new();
+        let name = Token::new(TokenType::Identifier, "jack".to_string(), None, 123);
+        let var_stmt = VarStmt {
+            name: name.dup(),
+            initializer: Some(Expr::Literal(LiteralExpr {
+                value: Some(Object::Num(23.0)),
+            })),
+        };
+        assert!(terp.visit_var_stmt(&var_stmt).is_ok());
+        let var_expr = VariableExpr { name: name.dup() };
+        assert_eq!(
+            terp.visit_variable_expr(&var_expr).unwrap(),
+            Object::Num(23.0)
         );
-        let result = terp.visit_binary_expr(&binary_expr);
-        assert!(result.is_ok());
-        assert_eq!(result.ok(), Some(Object::Bool(true)));
+    }
+
+    #[test]
+    fn test_var_not_defined_expr() {
+        let terp = Interpreter::new();
+        let name = Token::new(TokenType::Identifier, "jack".to_string(), None, 123);
+        let var_stmt = VarStmt {
+            name: name.dup(),
+            initializer: None,
+        };
+        assert!(terp.visit_var_stmt(&var_stmt).is_ok());
+        let var_expr = VariableExpr { name: name.dup() };
+        assert_eq!(terp.visit_variable_expr(&var_expr).unwrap(), Object::Nil);
     }
 }
