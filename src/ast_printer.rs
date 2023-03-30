@@ -7,7 +7,7 @@ impl AstPrinter {
         expr.accept(self)
     }
 
-    pub fn parenthesize(&self, name: &String, exprs: &[&Box<Expr>]) -> Result<String, LoxError> {
+    pub fn parenthesize(&self, name: &String, exprs: &[&Expr]) -> Result<String, LoxError> {
         let mut builder = format!("({name}");
 
         for expr in exprs {

@@ -1,6 +1,7 @@
 use crate::error::LoxError;
 use crate::expr::{BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr};
 use crate::object::Object;
+use crate::stmt::*;
 use crate::token::*;
 use crate::token_type::*;
 
@@ -14,14 +15,32 @@ impl<'a> Parser<'a> {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        match self.expression() {
-            Ok(expr) => Some(expr),
-            Err(e) => {
-                e.report("");
-                None
-            }
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxError> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            statements.push(self.statement()?);
         }
+        Ok(statements)
+    }
+
+    fn statement(&mut self) -> Result<Stmt, LoxError> {
+        if self.is_match(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, LoxError> {
+        let value = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
+        Ok(Stmt::Print(PrintStmt { expression: value }))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, LoxError> {
+        let value = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
+        Ok(Stmt::Expression(ExpressionStmt { expression: value }))
     }
 
     fn expression(&mut self) -> Result<Expr, LoxError> {

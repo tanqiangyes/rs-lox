@@ -10,6 +10,7 @@ mod interpreter;
 mod object;
 mod parser;
 mod scanner;
+mod stmt;
 mod token;
 mod token_type;
 
@@ -77,15 +78,16 @@ impl Lox {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens()?;
 
+        // for token in tokens {
+        //     println!("{:?}", token);
+        // }
         let mut parser = Parser::new(tokens);
-        match parser.parse() {
-            None => {}
-            Some(expr) => {
-                // let printer = AstPrinter {};
-                // println!("AST Printer:\n{}", printer.print(&expr)?);
-                self.interpreter.interpret(&expr);
-            }
+
+        let statements = parser.parse()?;
+        if self.interpreter.interpret(statements) {
+            Ok(())
+        } else {
+            Err(LoxError::error(0, ""))
         }
-        Ok(())
     }
 }

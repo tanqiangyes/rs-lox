@@ -93,11 +93,16 @@ impl Scanner {
             }
             '/' => {
                 if self.is_match('/') {
+                    let start = self.current - 1;
+                    let start_line = self.line;
                     while let Some(ch) = self.peek() {
                         if ch != '\n' {
                             self.advance();
+                        } else {
+                            break;
                         }
                     }
+                    self.print_comment(start, start_line);
                 } else if self.is_match('*') {
                     let start = self.current - 1;
                     let start_line = self.line;

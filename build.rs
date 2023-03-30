@@ -1,5 +1,6 @@
 use std::io;
 mod generate_ast;
+
 use generate_ast::*;
 
 fn main() -> io::Result<()> {
