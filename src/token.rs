@@ -5,10 +5,10 @@ use std::fmt::Formatter;
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    pub(crate) ttype: TokenType,
-    pub(crate) lexeme: String,
-    pub(crate) literal: Option<Object>,
-    pub(crate) line: usize,
+    pub ttype: TokenType,
+    pub lexeme: String,
+    pub literal: Option<Object>,
+    pub line: usize,
 }
 
 impl Token {
@@ -35,7 +35,7 @@ impl Token {
     pub fn dup(&self) -> Token {
         Token {
             ttype: self.ttype,
-            lexeme: self.lexeme.to_string(),
+            lexeme: self.lexeme.clone(),
             literal: self.literal.clone(),
             line: self.line,
         }

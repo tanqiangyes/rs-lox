@@ -1,9 +1,9 @@
 extern crate core;
 
 use std::env::args;
-use std::io::{self, stdout, BufRead, Write};
+use std::io::{self, stdout, Write};
 
-mod ast_printer;
+// mod ast_printer;
 mod error;
 mod expr;
 mod interpreter;
@@ -58,11 +58,14 @@ impl Lox {
     pub fn run_prompt(&self) {
         let stdin = io::stdin();
         print!("> ");
-        stdout().flush().expect("Error: flush Error");
-        for line in stdin.lock().lines() {
+        let _ = stdout().flush();
+        for line in stdin.lines() {
             if let Ok(line) = line {
                 if line.is_empty() {
-                    break;
+                    println!("Please enter something to execute");
+                    print!("> ");
+                    let _ = stdout().flush();
+                    continue;
                 }
 
                 if self.run(line).is_err() {}
@@ -70,7 +73,7 @@ impl Lox {
                 break;
             }
             print!("> ");
-            stdout().flush().expect("Error: flush Error");
+            let _ = stdout().flush();
         }
     }
 

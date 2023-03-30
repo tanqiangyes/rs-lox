@@ -6,12 +6,12 @@ use crate::token::*;
 use crate::token_type::*;
 
 pub struct Parser<'a> {
-    tokens: &'a Vec<Token>,
+    tokens: &'a [Token],
     current: usize,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: &Vec<Token>) -> Parser {
+    pub fn new(tokens: &[Token]) -> Parser {
         Parser { tokens, current: 0 }
     }
 

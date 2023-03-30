@@ -8,37 +8,37 @@ struct TreeType {
     fields: Vec<String>,
 }
 
-pub fn generate_ast(output_dir: &String) -> io::Result<()> {
+pub fn generate_ast(output_dir: &str) -> io::Result<()> {
     define_ast(
         output_dir,
-        &"Expr".to_string(),
+        "Expr",
         &["error", "token", "object"],
         &[
-            "Binary : Box<Expr> left, Token operator, Box<Expr> right".to_string(),
-            "Grouping: Box<Expr> expression".to_string(),
-            "Literal : Option<Object> value".to_string(),
-            "Unary : Token operator, Box<Expr> right".to_string(),
-            "Variable: Token name".to_string(),
+            "Binary : Box<Expr> left, Token operator, Box<Expr> right",
+            "Grouping: Box<Expr> expression",
+            "Literal : Option<Object> value",
+            "Unary : Token operator, Box<Expr> right",
+            "Variable: Token name",
         ],
     )?;
     define_ast(
         output_dir,
-        &"Stmt".to_string(),
+        "Stmt",
         &["error", "expr", "token"],
         &[
-            "Expression: Expr expression".to_string(),
-            "Print : Expr expression".to_string(),
-            "Var : Token name, Expr initializer".to_string(),
+            "Expression: Expr expression",
+            "Print : Expr expression",
+            "Var : Token name, Expr initializer",
         ],
     )?;
     Ok(())
 }
 
 fn define_ast(
-    output_dir: &String,
-    base_name: &String,
+    output_dir: &str,
+    base_name: &str,
     imports: &[&str],
-    types: &[String],
+    types: &[&str],
 ) -> io::Result<()> {
     let path = format!("{output_dir}/{}.rs", base_name.to_lowercase());
     let mut file = File::create(path)?;

@@ -22,7 +22,7 @@ impl AstPrinter {
 
 impl ExprVisitor<String> for AstPrinter {
     fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<String, LoxError> {
-        self.parenthesize(&expr.operator.lexeme, &[&expr.left, &expr.right])
+        self.parenthesize(&expr.operator.as_string(), &[&expr.left, &expr.right])
     }
 
     fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<String, LoxError> {
