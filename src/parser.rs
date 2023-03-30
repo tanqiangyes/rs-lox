@@ -1,5 +1,5 @@
 use crate::error::LoxError;
-use crate::expr::{BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr};
+use crate::expr::{BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr, VariableExpr};
 use crate::object::Object;
 use crate::stmt::*;
 use crate::token::*;
@@ -18,9 +18,36 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
         Ok(statements)
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, LoxError> {
+        let result = if self.is_match(&[TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+
+        if result.is_err() {
+            self.synchronize();
+        }
+        result
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, LoxError> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
+        let initializer = if self.is_match(&[TokenType::Assign]) {
+            self.expression()?
+        } else {
+            return Err(LoxError::error(name.line, "Not a variable declaration."));
+        };
+        self.consume(
+            TokenType::SemiColon,
+            "Expect ';' after variable declaration.",
+        )?;
+        Ok(Stmt::Var(VarStmt { name, initializer }))
     }
 
     fn statement(&mut self) -> Result<Stmt, LoxError> {
@@ -142,6 +169,12 @@ impl<'a> Parser<'a> {
         if self.is_match(&[TokenType::String, TokenType::Number]) {
             return Ok(Expr::Literal(LiteralExpr {
                 value: self.previous().dup().literal,
+            }));
+        }
+
+        if self.is_match(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable(VariableExpr {
+                name: self.previous().dup(),
             }));
         }
 

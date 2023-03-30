@@ -1,7 +1,7 @@
 use crate::error::LoxError;
 use crate::expr::*;
 use crate::object::Object;
-use crate::stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor};
+use crate::stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt};
 use crate::token_type::TokenType;
 
 pub struct Interpreter {}
@@ -15,6 +15,10 @@ impl StmtVisitor<()> for Interpreter {
     fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxError> {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
+        Ok(())
+    }
+
+    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
         Ok(())
     }
 }
@@ -146,6 +150,10 @@ impl ExprVisitor<Object> for Interpreter {
                 "Unreachable according to Unary expression",
             )),
         }
+    }
+
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
+        Ok(Object::Nil)
     }
 }
 

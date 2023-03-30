@@ -1,5 +1,7 @@
 use crate::error::LoxError;
-use crate::expr::{BinaryExpr, Expr, ExprVisitor, GroupingExpr, LiteralExpr, UnaryExpr};
+use crate::expr::{
+    BinaryExpr, Expr, ExprVisitor, GroupingExpr, LiteralExpr, UnaryExpr, VariableExpr,
+};
 
 pub struct AstPrinter;
 impl AstPrinter {
@@ -37,5 +39,9 @@ impl ExprVisitor<String> for AstPrinter {
 
     fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<String, LoxError> {
         self.parenthesize(&expr.operator.lexeme, &[&expr.right])
+    }
+
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<String, LoxError> {
+        Ok(format!("var {}", expr.accept(self)?))
     }
 }

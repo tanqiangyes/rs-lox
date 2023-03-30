@@ -18,15 +18,17 @@ pub fn generate_ast(output_dir: &String) -> io::Result<()> {
             "Grouping: Box<Expr> expression".to_string(),
             "Literal : Option<Object> value".to_string(),
             "Unary : Token operator, Box<Expr> right".to_string(),
+            "Variable: Token name".to_string(),
         ],
     )?;
     define_ast(
         output_dir,
         &"Stmt".to_string(),
-        &["error", "expr"],
+        &["error", "expr", "token"],
         &[
             "Expression: Expr expression".to_string(),
             "Print : Expr expression".to_string(),
+            "Var : Token name, Expr initializer".to_string(),
         ],
     )?;
     Ok(())
