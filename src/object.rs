@@ -1,6 +1,3 @@
-
-
-
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -19,7 +16,7 @@ impl fmt::Display for Object {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Object::Num(n) => write!(f, "{n}"),
-            Object::Str(n) => write!(f, "\"{n}\""),
+            Object::Str(n) => write!(f, "{n}"),
             Object::Bool(n) => {
                 if *n {
                     write!(f, "true")

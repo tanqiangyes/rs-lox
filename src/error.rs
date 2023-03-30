@@ -10,33 +10,30 @@ pub struct LoxError {
 
 impl LoxError {
     pub fn error(line: usize, message: &str) -> LoxError {
-        let err = LoxError {
+        // err.report("");
+        LoxError {
             token: None,
             line,
             message: message.to_string(),
-        };
-        // err.report("");
-        err
+        }
     }
 
     pub fn parse_error(token: Token, message: &str) -> LoxError {
-        let err = LoxError {
+        // err.report("");
+        LoxError {
             token: Some(token.dup()),
             line: token.line,
             message: message.to_string(),
-        };
-        // err.report("");
-        err
+        }
     }
 
     pub fn runtime_error(token: Token, message: &str) -> LoxError {
-        let err = LoxError {
+        // err.report("");
+        LoxError {
             token: Some(token.dup()),
             line: token.line,
             message: message.to_string(),
-        };
-        // err.report("");
-        err
+        }
     }
 
     pub fn report(&self, loc: &str) {

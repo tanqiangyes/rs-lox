@@ -44,6 +44,24 @@ impl ExprVisitor<Object> for Interpreter {
                     ));
                 }
             },
+            (Object::Str(left), Object::Num(right)) => match op {
+                TokenType::Plus => Object::Str(format!("{}{}", left, right)),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to num and string binary expression",
+                    ));
+                }
+            },
+            (Object::Num(left), Object::Str(right)) => match op {
+                TokenType::Plus => Object::Str(format!("{}{}", left, right)),
+                _ => {
+                    return Err(LoxError::error(
+                        expr.operator.line,
+                        "Unreachable according to string and num binary expression",
+                    ));
+                }
+            },
             (Object::Nil, Object::Nil) => match op {
                 TokenType::Equal => Object::Bool(true),
                 TokenType::BangEqual => Object::Bool(false),

@@ -13,7 +13,6 @@ mod scanner;
 mod token;
 mod token_type;
 
-use ast_printer::*;
 use error::*;
 use interpreter::*;
 use parser::*;
