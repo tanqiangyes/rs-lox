@@ -118,7 +118,7 @@ impl ExprVisitor<Object> for Interpreter {
 }
 
 impl Interpreter {
-    fn evaluate(&self, expr: &Box<Expr>) -> Result<Object, LoxError> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
         expr.accept(self)
     }
 
@@ -126,6 +126,19 @@ impl Interpreter {
         match right {
             Object::Nil | Object::Bool(false) => false,
             _ => true,
+        }
+    }
+
+    pub fn interpret(&self, expr: &Expr) -> bool {
+        match self.evaluate(expr) {
+            Ok(v) => {
+                println!("{}", v);
+                true
+            }
+            Err(e) => {
+                e.report("");
+                false
+            }
         }
     }
 }

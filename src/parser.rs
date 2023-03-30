@@ -17,7 +17,10 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Option<Expr> {
         match self.expression() {
             Ok(expr) => Some(expr),
-            Err(_) => None,
+            Err(e) => {
+                e.report("");
+                None
+            }
         }
     }
 

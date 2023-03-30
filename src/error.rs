@@ -15,7 +15,7 @@ impl LoxError {
             line,
             message: message.to_string(),
         };
-        err.report("");
+        // err.report("");
         err
     }
 
@@ -25,7 +25,7 @@ impl LoxError {
             line: token.line,
             message: message.to_string(),
         };
-        err.report("");
+        // err.report("");
         err
     }
 
@@ -35,7 +35,7 @@ impl LoxError {
             line: token.line,
             message: message.to_string(),
         };
-        err.report("");
+        // err.report("");
         err
     }
 
