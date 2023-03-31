@@ -1,17 +1,29 @@
 use crate::error::LoxError;
 use crate::object::Object;
 use crate::token::Token;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::rc::Rc;
 
+#[derive(Debug, Clone)]
 pub struct Environment {
     variables: HashMap<String, Object>,
+    enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
     pub fn new() -> Environment {
         Environment {
             variables: HashMap::new(),
+            enclosing: None,
+        }
+    }
+
+    pub fn new_with_enclosing(enclosing: Rc<RefCell<Environment>>) -> Environment {
+        Environment {
+            variables: HashMap::new(),
+            enclosing: Some(enclosing),
         }
     }
 
@@ -22,6 +34,8 @@ impl Environment {
     pub fn get(&self, name: &Token) -> Result<Object, LoxError> {
         if let Some(object) = self.variables.get(&name.as_string()) {
             Ok(object.clone())
+        } else if let Some(enclosing) = &self.enclosing {
+            enclosing.borrow().get(name)
         } else {
             Err(LoxError::runtime_error(
                 name.dup(),
@@ -34,6 +48,8 @@ impl Environment {
         if let Entry::Occupied(mut object) = self.variables.entry(name.as_string()) {
             object.insert(value);
             Ok(())
+        } else if let Some(enclosing) = &self.enclosing {
+            enclosing.borrow_mut().assign(name, value)
         } else {
             Err(LoxError::runtime_error(
                 name.dup(),

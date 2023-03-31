@@ -209,6 +209,10 @@ impl Interpreter {
         }
         success
     }
+
+    pub fn print_environment(&self) {
+        println!("{:?}", self.environment);
+    }
 }
 
 #[cfg(test)]
