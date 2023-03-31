@@ -594,7 +594,7 @@ mod tests {
         };
         assert!(terp.visit_var_stmt(&var_stmt).is_ok());
         assert_eq!(
-            terp.environment.borrow().get(&name).unwrap(),
+            terp.environment.borrow().borrow().get(&name).unwrap(),
             Object::Num(23.0)
         );
     }
@@ -608,7 +608,10 @@ mod tests {
             initializer: None,
         };
         assert!(terp.visit_var_stmt(&var_stmt).is_ok());
-        assert_eq!(terp.environment.borrow().get(&name).unwrap(), Object::Nil);
+        assert_eq!(
+            terp.environment.borrow().borrow().get(&name).unwrap(),
+            Object::Nil
+        );
     }
 
     #[test]
