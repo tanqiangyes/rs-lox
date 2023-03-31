@@ -2,7 +2,9 @@ use crate::environment::Environment;
 use crate::error::LoxError;
 use crate::expr::*;
 use crate::object::Object;
-use crate::stmt::{BlockStmt, ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt};
+use crate::stmt::{
+    BlockStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, StmtVisitor, VarStmt, WhileStmt,
+};
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -22,6 +24,16 @@ impl StmtVisitor<()> for Interpreter {
         Ok(())
     }
 
+    fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), LoxError> {
+        if self.is_truthy(self.evaluate(&stmt.condition)?) {
+            self.execute(&stmt.then_branch)
+        } else if let Some(else_branch) = &stmt.else_branch {
+            self.execute(else_branch)
+        } else {
+            Ok(())
+        }
+    }
+
     fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxError> {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
@@ -39,6 +51,13 @@ impl StmtVisitor<()> for Interpreter {
             .borrow()
             .borrow_mut()
             .define(stmt.name.as_string(), value);
+        Ok(())
+    }
+
+    fn visit_while_stmt(&self, stmt: &WhileStmt) -> Result<(), LoxError> {
+        while self.is_truthy(self.evaluate(&stmt.condition)?) {
+            self.execute(&stmt.body)?;
+        }
         Ok(())
     }
 }
@@ -163,6 +182,21 @@ impl ExprVisitor<Object> for Interpreter {
 
     fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
         Ok(expr.value.clone().unwrap())
+    }
+
+    fn visit_logical_expr(&self, expr: &LogicalExpr) -> Result<Object, LoxError> {
+        let left = self.evaluate(&expr.left)?;
+
+        if expr.operator.is(TokenType::Or) {
+            // or
+            if self.is_truthy(left.clone()) {
+                return Ok(left);
+            }
+        } else if !self.is_truthy(left.clone()) {
+            // and
+            return Ok(left);
+        }
+        self.evaluate(&expr.right)
     }
 
     fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxError> {

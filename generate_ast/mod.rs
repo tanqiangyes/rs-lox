@@ -18,6 +18,7 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
             "Binary : Box<Expr> left, Token operator, Box<Expr> right",
             "Grouping: Box<Expr> expression",
             "Literal : Option<Object> value",
+            "Logical: Box<Expr> left, Token operator, Box<Expr> right",
             "Unary : Token operator, Box<Expr> right",
             "Variable: Token name",
         ],
@@ -29,8 +30,10 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
         &[
             "Block: Vec<Stmt> statements",
             "Expression: Expr expression",
+            "If: Expr condition, Box<Stmt> then_branch, Option<Box<Stmt>> else_branch",
             "Print : Expr expression",
             "Var : Token name, Option<Expr> initializer",
+            "While: Expr condition, Box<Stmt> body",
         ],
     )?;
     Ok(())
