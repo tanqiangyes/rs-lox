@@ -2,15 +2,21 @@ use crate::environment::Environment;
 use crate::error::LoxError;
 use crate::expr::*;
 use crate::object::Object;
-use crate::stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt};
+use crate::stmt::{BlockStmt, ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt};
 use crate::token_type::TokenType;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Interpreter {
-    environment: RefCell<Environment>,
+    environment: RefCell<Rc<RefCell<Environment>>>,
 }
 
 impl StmtVisitor<()> for Interpreter {
+    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxError> {
+        let e = Environment::new_with_enclosing(self.environment.borrow().clone());
+        self.execute_block(&stmt.statements, e)
+    }
+
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
         self.evaluate(&stmt.expression)?;
         Ok(())
@@ -30,6 +36,7 @@ impl StmtVisitor<()> for Interpreter {
         };
 
         self.environment
+            .borrow()
             .borrow_mut()
             .define(stmt.name.as_string(), value);
         Ok(())
@@ -40,6 +47,7 @@ impl ExprVisitor<Object> for Interpreter {
     fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
         let value = self.evaluate(&expr.value)?;
         self.environment
+            .borrow()
             .borrow_mut()
             .assign(&expr.name, value.clone())?;
         Ok(value)
@@ -174,14 +182,14 @@ impl ExprVisitor<Object> for Interpreter {
     }
 
     fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
-        self.environment.borrow().get(&expr.name)
+        self.environment.borrow().borrow().get(&expr.name)
     }
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
-            environment: RefCell::new(Environment::new()),
+            environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
         }
     }
 
@@ -189,9 +197,18 @@ impl Interpreter {
         expr.accept(self)
     }
 
-    fn execute(&self, stmt: Stmt) -> Result<(), LoxError> {
+    fn execute(&self, stmt: &Stmt) -> Result<(), LoxError> {
         // println!("{:?}", &stmt);
         stmt.accept(self)
+    }
+
+    fn execute_block(&self, statements: &[Stmt], env: Environment) -> Result<(), LoxError> {
+        let previous = self.environment.replace(Rc::new(RefCell::new(env)));
+        let result = statements
+            .iter()
+            .try_for_each(|statement| self.execute(statement));
+        self.environment.replace(previous);
+        result
     }
 
     fn is_truthy(&self, right: Object) -> bool {
@@ -200,7 +217,7 @@ impl Interpreter {
 
     pub fn interpret(&self, statements: Vec<Stmt>) -> bool {
         let mut success = true;
-        for statement in statements {
+        for statement in &statements {
             if let Err(e) = self.execute(statement) {
                 e.report("");
                 success = false;
