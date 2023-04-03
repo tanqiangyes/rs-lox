@@ -26,7 +26,7 @@ impl LoxCallable for NativeClock {
     }
 
     fn to_string(&self) -> String {
-        "NativeFunc: Clock".to_string()
+        "<native clock>".to_string()
     }
 }
 // -----------------------------------------------------------------------------------------------------------------------------

@@ -39,6 +39,6 @@ impl LoxCallable for LoxFunction {
     }
 
     fn to_string(&self) -> String {
-        self.name.as_string()
+        format!("<fn {}>", self.name.as_string())
     }
 }
