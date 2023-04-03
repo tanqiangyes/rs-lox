@@ -70,6 +70,10 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Result<Stmt, LoxError> {
+        if self.is_match(&[TokenType::For]) {
+            return self.for_statement();
+        }
+
         if self.is_match(&[TokenType::If]) {
             return self.if_statement();
         }
@@ -89,6 +93,59 @@ impl<'a> Parser<'a> {
         }
 
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+        let initializer = if self.is_match(&[TokenType::SemiColon]) {
+            None
+        } else if self.is_match(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition = if self.check(TokenType::SemiColon) {
+            Expr::Literal(LiteralExpr {
+                value: Some(Object::Bool(true)),
+            })
+        } else {
+            self.expression()?
+        };
+
+        self.consume(TokenType::SemiColon, "Expect ';' after loop condition.")?;
+
+        let increment = if self.check(TokenType::RightParen) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+
+        self.consume(TokenType::RightParen, "Expect ')' after loop condition.")?;
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = Stmt::Block(BlockStmt {
+                statements: vec![
+                    body,
+                    Stmt::Expression(ExpressionStmt {
+                        expression: increment,
+                    }),
+                ],
+            });
+        }
+
+        body = Stmt::While(WhileStmt {
+            condition,
+            body: Box::new(body),
+        });
+
+        if let Some(init) = initializer {
+            body = Stmt::Block(BlockStmt {
+                statements: vec![init, body],
+            });
+        }
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, LoxError> {
@@ -292,7 +349,8 @@ impl<'a> Parser<'a> {
                 expression: Box::new(expr),
             }));
         }
-        Err(LoxError::error(0, "Expect expression."))
+        let peek = self.peek().dup();
+        Err(LoxError::parse_error(peek, "Expect expression."))
     }
 
     fn consume(&mut self, ttype: TokenType, message: &str) -> Result<Token, LoxError> {
