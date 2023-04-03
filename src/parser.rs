@@ -1,11 +1,13 @@
 use crate::error::LoxResult;
 use crate::expr::{
-    AssignExpr, BinaryExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr, VariableExpr,
+    AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr,
+    VariableExpr,
 };
 use crate::object::Object;
 use crate::stmt::*;
 use crate::token::*;
 use crate::token_type::*;
+use std::rc::Rc;
 
 pub struct Parser<'a> {
     tokens: &'a [Token],
@@ -31,7 +33,7 @@ impl<'a> Parser<'a> {
                     statements.push(res);
                 }
                 Err(e) => {
-                    e.report("");
+                    e.report();
                 }
             }
         }
@@ -323,7 +325,40 @@ impl<'a> Parser<'a> {
             }));
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Expr, LoxResult> {
+        let mut expr = self.primary()?;
+        loop {
+            if self.is_match(&[TokenType::LeftParen]) {
+                expr = self.finish_call(Rc::new(expr))?;
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Rc<Expr>) -> Result<Expr, LoxResult> {
+        let mut arguments = Vec::new();
+        if !self.check(TokenType::RightParen) {
+            arguments.push(self.expression()?);
+            while self.is_match(&[TokenType::Comma]) {
+                if arguments.len() >= 255 {
+                    return Err(
+                        self.error(self.peek().dup(), "Can`t have more than 255 arguments.")
+                    );
+                }
+                arguments.push(self.expression()?);
+            }
+        }
+        let paren = self.consume(TokenType::RightParen, "Expect ')' after arguments")?;
+        Ok(Expr::Call(CallExpr {
+            callee: Rc::clone(&callee),
+            paren,
+            arguments,
+        }))
     }
 
     fn primary(&mut self) -> Result<Expr, LoxResult> {

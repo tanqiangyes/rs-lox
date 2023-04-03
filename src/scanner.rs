@@ -29,7 +29,7 @@ impl Scanner {
             match self.scan_token() {
                 Ok(_) => {}
                 Err(e) => {
-                    e.report("");
+                    e.report();
                     had_error = Some(e);
                 }
             }

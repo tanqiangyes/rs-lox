@@ -1,3 +1,4 @@
+use crate::callable::Callable;
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -8,6 +9,7 @@ pub enum Object {
     Num(f64),
     Str(String),
     Bool(bool),
+    Func(Callable),
     Nil,
     ArithmeticError,
 }
@@ -24,6 +26,7 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
+            Object::Func(_) => write!(f, "<func>"),
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
         }

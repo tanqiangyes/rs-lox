@@ -4,10 +4,12 @@ use std::env::args;
 use std::io::{self, stdout, Write};
 
 // mod ast_printer;
+mod callable;
 mod environment;
 mod error;
 mod expr;
 mod interpreter;
+mod native_functions;
 mod object;
 mod parser;
 mod scanner;
