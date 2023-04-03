@@ -1,4 +1,4 @@
-use crate::error::LoxError;
+use crate::error::LoxResult;
 use crate::object::Object;
 use crate::token::*;
 use crate::token_type::*;
@@ -22,8 +22,8 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Result<&Vec<Token>, LoxError> {
-        let mut had_error: Option<LoxError> = None;
+    pub fn scan_tokens(&mut self) -> Result<&Vec<Token>, LoxResult> {
+        let mut had_error: Option<LoxResult> = None;
         while !self.is_at_end() {
             self.start = self.current;
             match self.scan_token() {
@@ -46,7 +46,7 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    fn scan_token(&mut self) -> Result<(), LoxError> {
+    fn scan_token(&mut self) -> Result<(), LoxResult> {
         let c = self.advance();
         match c {
             '(' => self.add_token(TokenType::LeftParen),
@@ -126,14 +126,14 @@ impl Scanner {
                 if c.is_alphanumeric() || c == '_' {
                     self.identifier();
                 } else {
-                    return Err(LoxError::error(self.line, "Unknown token type"));
+                    return Err(LoxResult::error(self.line, "Unknown token type"));
                 }
             }
         }
         Ok(())
     }
     // comment like /*  */
-    fn scan_comment(&mut self, start: usize, start_line: usize) -> Result<(), LoxError> {
+    fn scan_comment(&mut self, start: usize, start_line: usize) -> Result<(), LoxResult> {
         while !self.is_match('*') && !self.is_at_end() {
             self.advance();
             if self.peek() == Some('\n') {
@@ -152,7 +152,7 @@ impl Scanner {
                 self.scan_comment(start, start_line)
             };
         }
-        Err(LoxError::error(self.line, "UnClosed comment."))
+        Err(LoxResult::error(self.line, "UnClosed comment."))
     }
 
     fn print_comment(&self, start: usize, _start_line: usize) {
@@ -207,7 +207,7 @@ impl Scanner {
         }
     }
 
-    fn string(&mut self) -> Result<(), LoxError> {
+    fn string(&mut self) -> Result<(), LoxResult> {
         while let Some(ch) = self.peek() {
             if ch == '"' {
                 break;
@@ -218,7 +218,7 @@ impl Scanner {
             self.advance();
         }
         if self.is_at_end() {
-            return Err(LoxError::error(self.line, "Unterminated string."));
+            return Err(LoxResult::error(self.line, "Unterminated string."));
         }
 
         self.advance();

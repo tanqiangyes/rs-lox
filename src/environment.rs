@@ -1,4 +1,4 @@
-use crate::error::LoxError;
+use crate::error::*;
 use crate::object::Object;
 use crate::token::Token;
 use std::cell::RefCell;
@@ -31,27 +31,27 @@ impl Environment {
         self.variables.insert(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<Object, LoxError> {
+    pub fn get(&self, name: &Token) -> Result<Object, LoxResult> {
         if let Some(object) = self.variables.get(&name.as_string()) {
             Ok(object.clone())
         } else if let Some(enclosing) = &self.enclosing {
             enclosing.borrow().get(name)
         } else {
-            Err(LoxError::runtime_error(
+            Err(LoxResult::runtime_error(
                 name.dup(),
                 &format!("Undefined variable '{}'.", &name.as_string()),
             ))
         }
     }
 
-    pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), LoxError> {
+    pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), LoxResult> {
         if let Entry::Occupied(mut object) = self.variables.entry(name.as_string()) {
             object.insert(value);
             Ok(())
         } else if let Some(enclosing) = &self.enclosing {
             enclosing.borrow_mut().assign(name, value)
         } else {
-            Err(LoxError::runtime_error(
+            Err(LoxResult::runtime_error(
                 name.dup(),
                 &format!("Undefined variable '{}'.", &name.as_string()),
             ))

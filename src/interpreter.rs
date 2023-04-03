@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::error::LoxError;
+use crate::error::*;
 use crate::expr::*;
 use crate::object::Object;
 use crate::stmt::{
@@ -14,17 +14,17 @@ pub struct Interpreter {
 }
 
 impl StmtVisitor<()> for Interpreter {
-    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxError> {
+    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxResult> {
         let e = Environment::new_with_enclosing(self.environment.borrow().clone());
         self.execute_block(&stmt.statements, e)
     }
 
-    fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
+    fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.evaluate(&stmt.expression)?;
         Ok(())
     }
 
-    fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), LoxError> {
+    fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), LoxResult> {
         if self.is_truthy(self.evaluate(&stmt.condition)?) {
             self.execute(&stmt.then_branch)
         } else if let Some(else_branch) = &stmt.else_branch {
@@ -34,13 +34,13 @@ impl StmtVisitor<()> for Interpreter {
         }
     }
 
-    fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxError> {
+    fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxResult> {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
         Ok(())
     }
 
-    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
+    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxResult> {
         let value = if let Some(initializer) = &stmt.initializer {
             self.evaluate(initializer)?
         } else {
@@ -54,16 +54,21 @@ impl StmtVisitor<()> for Interpreter {
         Ok(())
     }
 
-    fn visit_while_stmt(&self, stmt: &WhileStmt) -> Result<(), LoxError> {
+    fn visit_while_stmt(&self, stmt: &WhileStmt) -> Result<(), LoxResult> {
         while self.is_truthy(self.evaluate(&stmt.condition)?) {
-            self.execute(&stmt.body)?;
+            let result = self.execute(&stmt.body);
+            match result {
+                Err(LoxResult::Break) => break,
+                Err(e) => return Err(e),
+                Ok(_) => {}
+            }
         }
         Ok(())
     }
 }
 
 impl ExprVisitor<Object> for Interpreter {
-    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
+    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxResult> {
         let value = self.evaluate(&expr.value)?;
         self.environment
             .borrow()
@@ -72,7 +77,7 @@ impl ExprVisitor<Object> for Interpreter {
         Ok(value)
     }
 
-    fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxError> {
+    fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxResult> {
         let left = self.evaluate(&expr.left)?;
         let right = self.evaluate(&expr.right)?;
         let op = expr.operator.token_type();
@@ -89,7 +94,7 @@ impl ExprVisitor<Object> for Interpreter {
                 TokenType::Equal => Object::Bool(left == right),
                 TokenType::BangEqual => Object::Bool(left != right),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to num binary expression",
                     ));
@@ -104,7 +109,7 @@ impl ExprVisitor<Object> for Interpreter {
                 TokenType::Equal => Object::Bool(left == right),
                 TokenType::BangEqual => Object::Bool(left != right),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to string binary expression",
                     ));
@@ -113,7 +118,7 @@ impl ExprVisitor<Object> for Interpreter {
             (Object::Str(left), Object::Num(right)) => match op {
                 TokenType::Plus => Object::Str(format!("{}{}", left, right)),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to num and string binary expression",
                     ));
@@ -122,7 +127,7 @@ impl ExprVisitor<Object> for Interpreter {
             (Object::Num(left), Object::Str(right)) => match op {
                 TokenType::Plus => Object::Str(format!("{}{}", left, right)),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to string and num binary expression",
                     ));
@@ -132,7 +137,7 @@ impl ExprVisitor<Object> for Interpreter {
                 TokenType::Equal => Object::Bool(true),
                 TokenType::BangEqual => Object::Bool(false),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to nil binary expression",
                     ));
@@ -142,7 +147,7 @@ impl ExprVisitor<Object> for Interpreter {
                 TokenType::Equal => Object::Bool(false),
                 TokenType::BangEqual => Object::Bool(true),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to nil eq other binary expression",
                     ));
@@ -152,14 +157,14 @@ impl ExprVisitor<Object> for Interpreter {
                 TokenType::Equal => Object::Bool(left == right),
                 TokenType::BangEqual => Object::Bool(left != right),
                 _ => {
-                    return Err(LoxError::error(
+                    return Err(LoxResult::error(
                         expr.operator.line,
                         "Unreachable according to bool binary expression",
                     ));
                 }
             },
             _ => {
-                return Err(LoxError::error(
+                return Err(LoxResult::error(
                     expr.operator.line,
                     "Both operands of the comparison expression must be of the same type",
                 ))
@@ -167,7 +172,7 @@ impl ExprVisitor<Object> for Interpreter {
         };
 
         if result == Object::ArithmeticError {
-            Err(LoxError::runtime_error(
+            Err(LoxResult::runtime_error(
                 expr.operator.dup(),
                 "Illegal expression",
             ))
@@ -176,15 +181,15 @@ impl ExprVisitor<Object> for Interpreter {
         }
     }
 
-    fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxError> {
+    fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxResult> {
         self.evaluate(&expr.expression)
     }
 
-    fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
+    fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxResult> {
         Ok(expr.value.clone().unwrap())
     }
 
-    fn visit_logical_expr(&self, expr: &LogicalExpr) -> Result<Object, LoxError> {
+    fn visit_logical_expr(&self, expr: &LogicalExpr) -> Result<Object, LoxResult> {
         let left = self.evaluate(&expr.left)?;
 
         if expr.operator.is(TokenType::Or) {
@@ -199,7 +204,7 @@ impl ExprVisitor<Object> for Interpreter {
         self.evaluate(&expr.right)
     }
 
-    fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxError> {
+    fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxResult> {
         let right = self.evaluate(&expr.right)?;
 
         match expr.operator.token_type() {
@@ -208,14 +213,14 @@ impl ExprVisitor<Object> for Interpreter {
                 _ => Ok(Object::Nil),
             },
             TokenType::Bang => Ok(Object::Bool(!self.is_truthy(right))),
-            _ => Err(LoxError::error(
+            _ => Err(LoxResult::error(
                 expr.operator.line,
                 "Unreachable according to Unary expression",
             )),
         }
     }
 
-    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxResult> {
         self.environment.borrow().borrow().get(&expr.name)
     }
 }
@@ -227,16 +232,16 @@ impl Interpreter {
         }
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, LoxResult> {
         expr.accept(self)
     }
 
-    fn execute(&self, stmt: &Stmt) -> Result<(), LoxError> {
+    fn execute(&self, stmt: &Stmt) -> Result<(), LoxResult> {
         // println!("{:?}", &stmt);
         stmt.accept(self)
     }
 
-    fn execute_block(&self, statements: &[Stmt], env: Environment) -> Result<(), LoxError> {
+    fn execute_block(&self, statements: &[Stmt], env: Environment) -> Result<(), LoxResult> {
         let previous = self.environment.replace(Rc::new(RefCell::new(env)));
         let result = statements
             .iter()
