@@ -54,7 +54,7 @@ impl LoxResult {
                 if token.is(TokenType::Eof) {
                     eprintln!("[line {}] Error at end: {}", token.line, message);
                 } else {
-                    eprintln!("{}\n[line {}]", message, token.line);
+                    eprintln!("[line {}] {}", token.line, message);
                 }
             }
             LoxResult::Error { line, message } => {

@@ -267,6 +267,7 @@ impl Scanner {
     fn keywords(check: &str) -> Option<TokenType> {
         match check {
             "and" => Some(TokenType::And),
+            "break" => Some(TokenType::Break),
             "class" => Some(TokenType::Class),
             "else" => Some(TokenType::Else),
             "false" => Some(TokenType::False),

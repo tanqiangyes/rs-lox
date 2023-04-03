@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::expr::*;
 use crate::object::Object;
 use crate::stmt::{
-    BlockStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, StmtVisitor, VarStmt, WhileStmt,
+    BlockStmt, BreakStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, StmtVisitor, VarStmt, WhileStmt,
 };
 use crate::token_type::TokenType;
 use std::cell::RefCell;
@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 pub struct Interpreter {
     environment: RefCell<Rc<RefCell<Environment>>>,
+    nest: RefCell<usize>,
 }
 
 impl StmtVisitor<()> for Interpreter {
@@ -22,6 +23,17 @@ impl StmtVisitor<()> for Interpreter {
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.evaluate(&stmt.expression)?;
         Ok(())
+    }
+
+    fn visit_break_stmt(&self, stmt: &BreakStmt) -> Result<(), LoxResult> {
+        if *self.nest.borrow() == 0 {
+            Err(LoxResult::runtime_error(
+                stmt.token.dup(),
+                "break outside of  for/while loop",
+            ))
+        } else {
+            Err(LoxResult::Break)
+        }
     }
 
     fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), LoxResult> {
@@ -55,14 +67,15 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_while_stmt(&self, stmt: &WhileStmt) -> Result<(), LoxResult> {
+        *self.nest.borrow_mut() += 1;
         while self.is_truthy(self.evaluate(&stmt.condition)?) {
-            let result = self.execute(&stmt.body);
-            match result {
+            match self.execute(&stmt.body) {
                 Err(LoxResult::Break) => break,
                 Err(e) => return Err(e),
                 Ok(_) => {}
             }
         }
+        *self.nest.borrow_mut() -= 1;
         Ok(())
     }
 }
@@ -229,6 +242,7 @@ impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
+            nest: RefCell::new(0),
         }
     }
 
@@ -256,6 +270,7 @@ impl Interpreter {
 
     pub fn interpret(&self, statements: Vec<Stmt>) -> bool {
         let mut success = true;
+        *self.nest.borrow_mut() = 0;
         for statement in &statements {
             if let Err(e) = self.execute(statement) {
                 e.report("");
