@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::interpreter::Interpreter;
 use crate::object::Object;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -12,6 +12,13 @@ pub struct Callable {
 pub trait LoxCallable {
     fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult>;
     fn arity(&self) -> usize;
+    fn to_string(&self) -> String;
+}
+
+impl Display for dyn LoxCallable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
 }
 
 impl LoxCallable for Callable {
@@ -21,6 +28,10 @@ impl LoxCallable for Callable {
 
     fn arity(&self) -> usize {
         self.func.arity()
+    }
+
+    fn to_string(&self) -> String {
+        self.func.to_string()
     }
 }
 

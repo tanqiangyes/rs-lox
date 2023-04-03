@@ -9,6 +9,7 @@ mod environment;
 mod error;
 mod expr;
 mod interpreter;
+mod lox_function;
 mod native_functions;
 mod object;
 mod parser;

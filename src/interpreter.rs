@@ -2,6 +2,7 @@ use crate::callable::*;
 use crate::environment::*;
 use crate::error::*;
 use crate::expr::*;
+use crate::lox_function::LoxFunction;
 use crate::native_functions::*;
 use crate::object::*;
 use crate::stmt::*;
@@ -10,7 +11,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Interpreter {
-    globals: Rc<RefCell<Environment>>,
+    pub globals: Rc<RefCell<Environment>>,
     environment: RefCell<Rc<RefCell<Environment>>>,
     nest: RefCell<usize>,
 }
@@ -23,6 +24,17 @@ impl StmtVisitor<()> for Interpreter {
 
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.evaluate(&stmt.expression)?;
+        Ok(())
+    }
+
+    fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), LoxResult> {
+        let function = LoxFunction::new(&stmt);
+        self.environment.borrow().borrow_mut().define(
+            stmt.name.as_string(),
+            Object::Func(Callable {
+                func: Rc::new(function),
+            }),
+        );
         Ok(())
     }
 
@@ -284,6 +296,9 @@ impl Interpreter {
     }
 
     fn evaluate(&self, expr: &Expr) -> Result<Object, LoxResult> {
+        // if let Err(e) = self.check_global_function("clock") {
+        //     return Err(e);
+        // }
         expr.accept(self)
     }
 
@@ -292,7 +307,7 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    fn execute_block(&self, statements: &[Stmt], env: Environment) -> Result<(), LoxResult> {
+    pub fn execute_block(&self, statements: &[Stmt], env: Environment) -> Result<(), LoxResult> {
         let previous = self.environment.replace(Rc::new(RefCell::new(env)));
         let result = statements
             .iter()
@@ -300,6 +315,16 @@ impl Interpreter {
         self.environment.replace(previous);
         result
     }
+
+    // fn check_global_function(&self, name: &str) -> Result<(), LoxResult> {
+    //     if self.environment.borrow().borrow().get_by_name(name) {
+    //         Err(LoxResult::system_error(
+    //             &"Can't use global function name as identifier.",
+    //         ))
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
 
     fn is_truthy(&self, right: Object) -> bool {
         !matches!(right, Object::Nil | Object::Bool(false))

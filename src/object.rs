@@ -1,4 +1,4 @@
-use crate::callable::Callable;
+use crate::callable::{Callable, LoxCallable};
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -26,7 +26,7 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
-            Object::Func(_) => write!(f, "<func>"),
+            Object::Func(n) => write!(f, "{}", n.to_string()),
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
         }

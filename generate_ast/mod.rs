@@ -29,10 +29,11 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
         output_dir,
         "Stmt",
         &["error", "expr", "token"],
-        &[],
+        &["std::rc::Rc"],
         &[
             "Block: Vec<Stmt> statements",
             "Expression: Expr expression",
+            "Function: Token name, Rc<Vec<Token>> params, Rc<Vec<Stmt>> body",
             "Break: Token token",
             "If: Expr condition, Box<Stmt> then_branch, Option<Box<Stmt>> else_branch",
             "Print : Expr expression",

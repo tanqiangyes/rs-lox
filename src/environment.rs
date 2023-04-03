@@ -44,6 +44,16 @@ impl Environment {
         }
     }
 
+    // pub fn get_by_name(&self, name: &str) -> bool {
+    //     if let Some(_) = self.variables.get(name) {
+    //         true
+    //     } else if let Some(enclosing) = &self.enclosing {
+    //         enclosing.borrow().get_by_name(name)
+    //     } else {
+    //         false
+    //     }
+    // }
+
     pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), LoxResult> {
         if let Entry::Occupied(mut object) = self.variables.entry(name.as_string()) {
             object.insert(value);
