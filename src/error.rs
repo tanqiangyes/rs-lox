@@ -1,3 +1,4 @@
+use crate::object::Object;
 use crate::token::Token;
 use crate::token_type::TokenType;
 
@@ -7,7 +8,7 @@ pub enum LoxResult {
     RuntimeError { token: Token, message: String },
     Error { line: usize, message: String },
     SystemError { message: String },
-    // ReturnValue { value: Object },
+    ReturnValue { value: Object },
     Break,
     // Fail,
 }
@@ -41,6 +42,10 @@ impl LoxResult {
         }
     }
 
+    pub fn return_value(value: Object) -> LoxResult {
+        LoxResult::ReturnValue { value }
+    }
+
     pub fn report(&self) {
         match self {
             LoxResult::ParseError { token, message } => {
@@ -69,9 +74,9 @@ impl LoxResult {
             LoxResult::SystemError { message } => {
                 eprintln!("System Error: {}", message);
             }
-            LoxResult::Break => {} // LoxResult::Fail => {
-                                   //     panic!("should not get here")
-                                   // }
+            LoxResult::Break | LoxResult::ReturnValue { .. } => {} // LoxResult::Fail => {
+                                                                   //     panic!("should not get here")
+                                                                   // }
         };
     }
 }

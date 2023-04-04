@@ -28,7 +28,7 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), LoxResult> {
-        let function = LoxFunction::new(stmt);
+        let function = LoxFunction::new(stmt, &self.environment.borrow());
         self.environment.borrow().borrow_mut().define(
             stmt.name.as_string(),
             Object::Func(Callable {
@@ -63,6 +63,14 @@ impl StmtVisitor<()> for Interpreter {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
         Ok(())
+    }
+
+    fn visit_return_stmt(&self, stmt: &ReturnStmt) -> Result<(), LoxResult> {
+        if let Some(value) = &stmt.value {
+            Err(LoxResult::return_value(self.evaluate(value)?))
+        } else {
+            Err(LoxResult::return_value(Object::Nil))
+        }
     }
 
     fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxResult> {

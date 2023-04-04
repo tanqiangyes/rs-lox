@@ -55,6 +55,17 @@ impl<'a> Parser<'a> {
         result
     }
 
+    fn return_statement(&mut self) -> Result<Stmt, LoxResult> {
+        let keyword = self.previous().dup();
+        let value = if self.check(TokenType::SemiColon) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+        self.consume(TokenType::SemiColon, "Expect ';' after return value.")?;
+        Ok(Stmt::Return(ReturnStmt { keyword, value }))
+    }
+
     fn var_declaration(&mut self) -> Result<Stmt, LoxResult> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
         let initializer = if self.is_match(&[TokenType::Assign]) {
@@ -97,6 +108,10 @@ impl<'a> Parser<'a> {
 
         if self.is_match(&[TokenType::Print]) {
             return self.print_statement();
+        }
+
+        if self.is_match(&[TokenType::Return]) {
+            return self.return_statement();
         }
 
         if self.is_match(&[TokenType::While]) {
@@ -400,17 +415,17 @@ impl<'a> Parser<'a> {
             return Ok(Expr::Literal(LiteralExpr {
                 value: Some(Object::Bool(false)),
             }));
-        };
+        }
         if self.is_match(&[TokenType::True]) {
             return Ok(Expr::Literal(LiteralExpr {
                 value: Some(Object::Bool(true)),
             }));
-        };
+        }
         if self.is_match(&[TokenType::Nil]) {
             return Ok(Expr::Literal(LiteralExpr {
                 value: Some(Object::Nil),
             }));
-        };
+        }
 
         if self.is_match(&[TokenType::String, TokenType::Number]) {
             return Ok(Expr::Literal(LiteralExpr {
@@ -431,8 +446,10 @@ impl<'a> Parser<'a> {
                 expression: Box::new(expr),
             }));
         }
-        let peek = self.peek().dup();
-        Err(LoxResult::parse_error(peek, "Expect expression."))
+        Err(LoxResult::parse_error(
+            self.peek().dup(),
+            "Expect expression.",
+        ))
     }
 
     fn consume(&mut self, ttype: TokenType, message: &str) -> Result<Token, LoxResult> {

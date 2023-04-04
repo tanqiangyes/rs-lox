@@ -61,6 +61,7 @@ impl Scanner {
             '*' => self.add_token(TokenType::Star),
             '!' => {
                 let tok = if self.is_match('=') {
+                    self.advance();
                     TokenType::BangEqual
                 } else {
                     TokenType::Bang
@@ -69,6 +70,7 @@ impl Scanner {
             }
             '=' => {
                 let tok = if self.is_match('=') {
+                    self.advance();
                     TokenType::Equal
                 } else {
                     TokenType::Assign
@@ -77,6 +79,7 @@ impl Scanner {
             }
             '>' => {
                 let tok = if self.is_match('=') {
+                    self.advance();
                     TokenType::GreaterEqual
                 } else {
                     TokenType::Greater
@@ -85,6 +88,7 @@ impl Scanner {
             }
             '<' => {
                 let tok = if self.is_match('=') {
+                    self.advance();
                     TokenType::LessEqual
                 } else {
                     TokenType::Less
@@ -106,7 +110,7 @@ impl Scanner {
                 } else if self.is_match('*') {
                     let start = self.current - 1;
                     let start_line = self.line;
-                    self.advance();
+                    // self.advance();
                     self.scan_comment(start, start_line)?;
                 } else {
                     self.add_token(TokenType::Slash);
@@ -140,7 +144,6 @@ impl Scanner {
                 self.line += 1;
             }
         }
-
         if !self.is_at_end() {
             return if self.is_match('*') && self.peek_next() == Some('/') {
                 self.advance();
@@ -155,9 +158,10 @@ impl Scanner {
         Err(LoxResult::error(self.line, "UnClosed comment."))
     }
 
-    fn print_comment(&self, start: usize, _start_line: usize) {
+    fn print_comment(&self, start: usize, start_line: usize) {
         println!(
-            "Comment: {}",
+            "[line: {}] Comment: {}",
+            start_line,
             self.source[start..self.current].iter().collect::<String>()
         );
     }
