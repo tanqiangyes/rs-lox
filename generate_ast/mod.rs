@@ -13,33 +13,33 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
         output_dir,
         "Expr",
         &["error", "token", "object"],
-        &["std::rc::Rc"],
+        &["std::rc::Rc", "std::hash::{{Hash, Hasher}}"],
         &[
-            "Assign: Token name, Box<Expr> value",
-            "Binary : Box<Expr> left, Token operator, Box<Expr> right",
-            "Call: Rc<Expr> callee, Token paren, Vec<Expr> arguments",
-            "Grouping: Box<Expr> expression",
-            "Literal : Option<Object> value",
-            "Logical: Box<Expr> left, Token operator, Box<Expr> right",
-            "Unary : Token operator, Box<Expr> right",
-            "Variable: Token name",
+            "Assign   : Token name, Rc<Expr> value",
+            "Binary   : Rc<Expr> left, Token operator, Rc<Expr> right",
+            "Call     : Rc<Expr> callee, Token paren, Vec<Rc<Expr>> arguments",
+            "Grouping : Rc<Expr> expression",
+            "Literal  : Option<Object> value",
+            "Logical  : Rc<Expr> left, Token operator, Rc<Expr> right",
+            "Unary    : Token operator, Rc<Expr> right",
+            "Variable : Token name",
         ],
     )?;
     define_ast(
         output_dir,
         "Stmt",
         &["error", "expr", "token"],
-        &["std::rc::Rc"],
+        &["std::rc::Rc", "std::hash::{{Hash, Hasher}}"],
         &[
-            "Block: Vec<Stmt> statements",
-            "Expression: Expr expression",
-            "Function: Token name, Rc<Vec<Token>> params, Rc<Vec<Stmt>> body",
-            "Break: Token token",
-            "If: Expr condition, Box<Stmt> then_branch, Option<Box<Stmt>> else_branch",
-            "Print : Expr expression",
-            "Return: Token keyword, Option<Expr> value",
-            "Var : Token name, Option<Expr> initializer",
-            "While: Expr condition, Box<Stmt> body",
+            "Block      : Rc<Vec<Rc<Stmt>>> statements",
+            "Break      : Token token",
+            "Expression : Rc<Expr> expression",
+            "Function   : Token name, Rc<Vec<Token>> params, Rc<Vec<Rc<Stmt>>> body",
+            "If         : Rc<Expr> condition, Rc<Stmt> then_branch, Option<Rc<Stmt>> else_branch",
+            "Print      : Rc<Expr> expression",
+            "Return     : Token keyword, Option<Rc<Expr>> value",
+            "Var        : Token name, Option<Rc<Expr>> initializer",
+            "While      : Rc<Expr> condition, Rc<Stmt> body",
         ],
     )?;
     Ok(())
@@ -87,7 +87,7 @@ fn define_ast(
     for tree_type in &tree_types {
         writeln!(
             file,
-            "      {}({}),",
+            "      {}(Rc<{}>),",
             tree_type.base_class_name, tree_type.class_name
         )?;
     }
@@ -96,15 +96,19 @@ fn define_ast(
     writeln!(file, "impl {base_name} {{")?;
     writeln!(
         file,
-        "     pub fn accept<R>(&self, visitor: &dyn {}Visitor<R>) -> Result<R, LoxResult> {{",
+        "     pub fn accept<R>(&self, wrapper: Rc<{}>, visitor: &dyn {}Visitor<R>) -> Result<R, LoxResult> {{",
+        base_name,
         base_name
     )?;
     writeln!(file, "          match self {{")?;
     for tree_type in &tree_types {
         writeln!(
             file,
-            "               {}::{}(be) => be.accept(visitor),",
-            base_name, tree_type.base_class_name
+            "               {}::{}(be) => visitor.visit_{}_{}(wrapper, be),",
+            base_name,
+            tree_type.base_class_name,
+            tree_type.base_class_name.to_lowercase(),
+            base_name.to_lowercase(),
         )?;
     }
     writeln!(file, "          }}")?;
@@ -119,29 +123,58 @@ fn define_ast(
         }
         writeln!(file, "}}\n")?;
 
-        writeln!(file, "impl {} {{", tree_type.class_name)?;
-        writeln!(
-            file,
-            "     pub fn accept<R>(&self, visitor: &dyn {}Visitor<R>) -> Result<R, LoxResult> {{",
-            base_name
-        )?;
-        writeln!(
-            file,
-            "          visitor.visit_{}_{}(self)",
-            tree_type.base_class_name.to_lowercase(),
-            base_name.to_lowercase()
-        )?;
-        writeln!(file, "      }}")?;
-        writeln!(file, "}}")?;
+        // writeln!(file, "impl {} {{", tree_type.class_name)?;
+        // writeln!(
+        //     file,
+        //     "     pub fn accept<R>(&self, visitor: &dyn {}Visitor<R>) -> Result<R, LoxResult> {{",
+        //     base_name
+        // )?;
+        // writeln!(
+        //     file,
+        //     "          visitor.visit_{}_{}(self)",
+        //     tree_type.base_class_name.to_lowercase(),
+        //     base_name.to_lowercase()
+        // )?;
+        // writeln!(file, "      }}")?;
+        // writeln!(file, "}}")?;
     }
+
+    writeln!(file, "impl PartialEq for {} {{", base_name)?;
+    writeln!(file, "    fn eq(&self, other: &Self) -> bool {{")?;
+    writeln!(file, "        match (self, other) {{")?;
+    for t in &tree_types {
+        writeln!(
+            file,
+            "            ({0}::{1}(a), {0}::{1}(b)) => Rc::ptr_eq(a, b),",
+            base_name, t.base_class_name
+        )?;
+    }
+    writeln!(file, "            _ => false,")?;
+    writeln!(file, "        }}")?;
+    writeln!(file, "    }}")?;
+    writeln!(file, "}}\n\nimpl Eq for {}{{}}\n", base_name)?;
+
+    writeln!(file, "impl Hash for {} {{", base_name)?;
+    writeln!(file, "    fn hash<H>(&self, hasher: &mut H)")?;
+    writeln!(file, "    where H: Hasher,")?;
+    writeln!(file, "    {{ match self {{ ")?;
+    for t in &tree_types {
+        writeln!(
+            file,
+            "        {}::{}(a) => {{ hasher.write_usize(Rc::as_ptr(a) as usize); }}",
+            base_name, t.base_class_name
+        )?;
+    }
+    writeln!(file, "        }}\n    }}\n}}\n")?;
 
     writeln!(file, "pub trait {}Visitor<R> {{", base_name)?;
     for tree_type in &tree_types {
         writeln!(
             file,
-            "      fn visit_{}_{}(&self, {}: &{}) -> Result<R, LoxResult>; ",
+            "      fn visit_{}_{}(&self, wrapper: Rc<{}>, {}: &{}) -> Result<R, LoxResult>; ",
             tree_type.base_class_name.to_lowercase(),
             base_name.to_lowercase(),
+            base_name,
             base_name.to_lowercase(),
             tree_type.class_name
         )?;

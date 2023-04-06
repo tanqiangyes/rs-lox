@@ -2,6 +2,7 @@ extern crate core;
 
 use std::env::args;
 use std::io::{self, stdout, Write};
+use std::rc::Rc;
 
 // mod ast_printer;
 mod callable;
@@ -13,11 +14,13 @@ mod lox_function;
 mod native_functions;
 mod object;
 mod parser;
+mod resolver;
 mod scanner;
 mod stmt;
 mod token;
 mod token_type;
 
+use crate::resolver::Resolver;
 use error::*;
 use interpreter::*;
 use parser::*;
@@ -95,7 +98,10 @@ impl Lox {
         // }
         let mut parser = Parser::new(tokens);
         let statements = parser.parse()?;
-        if parser.success() && self.interpreter.interpret(statements) {
+        if parser.success() {
+            let resolver = Resolver::new(&self.interpreter);
+            resolver.resolve(&Rc::new(statements.clone()))?;
+            self.interpreter.interpret(statements);
             Ok(())
         } else {
             Err(LoxResult::error(0, ""))
