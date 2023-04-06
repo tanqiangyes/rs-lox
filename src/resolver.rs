@@ -5,8 +5,8 @@ use crate::expr::{
 };
 use crate::interpreter::Interpreter;
 use crate::stmt::{
-    BlockStmt, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
-    StmtVisitor, VarStmt, WhileStmt,
+    BlockStmt, BreakStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt,
+    Stmt, StmtVisitor, VarStmt, WhileStmt,
 };
 use crate::token::Token;
 use std::cell::RefCell;
@@ -33,6 +33,12 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
         self.begin_scope();
         self.resolve(&stmt.statements)?;
         self.end_scope();
+        Ok(())
+    }
+
+    fn visit_class_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        self.declare(&stmt.name);
+        self.define(&stmt.name);
         Ok(())
     }
 

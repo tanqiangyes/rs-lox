@@ -2,6 +2,7 @@ use crate::callable::*;
 use crate::environment::*;
 use crate::error::*;
 use crate::expr::*;
+use crate::lox_class::LoxClass;
 use crate::lox_function::LoxFunction;
 use crate::native_functions::*;
 use crate::object::*;
@@ -23,6 +24,19 @@ impl StmtVisitor<()> for Interpreter {
     fn visit_block_stmt(&self, _: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), LoxResult> {
         let e = Environment::new_with_enclosing(self.environment.borrow().clone());
         self.execute_block(&stmt.statements, e)
+    }
+
+    fn visit_class_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        self.environment
+            .borrow()
+            .borrow_mut()
+            .define(stmt.name.as_string(), Object::Nil);
+        let klass = LoxClass::new(stmt.name.as_string());
+        self.environment
+            .borrow()
+            .borrow_mut()
+            .assign(&stmt.name, Object::Class(klass))?;
+        Ok(())
     }
 
     fn visit_break_stmt(&self, _: Rc<Stmt>, _stmt: &BreakStmt) -> Result<(), LoxResult> {

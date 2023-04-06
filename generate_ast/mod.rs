@@ -32,6 +32,7 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
         &["std::rc::Rc", "std::hash::{{Hash, Hasher}}"],
         &[
             "Block      : Rc<Vec<Rc<Stmt>>> statements",
+            "Class      : Token name, Rc<Vec<Rc<Stmt>>> methods",
             "Break      : Token token",
             "Expression : Rc<Expr> expression",
             "Function   : Token name, Rc<Vec<Token>> params, Rc<Vec<Rc<Stmt>>> body",
