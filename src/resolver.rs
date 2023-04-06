@@ -17,6 +17,15 @@ use std::rc::Rc;
 pub struct Resolver<'a> {
     interpreter: &'a Interpreter,
     scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
+    has_error: RefCell<bool>,
+    current_fun_type: RefCell<FunctionType>,
+    in_while: RefCell<bool>,
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum FunctionType {
+    None,
+    Function,
 }
 
 impl<'a> StmtVisitor<()> for Resolver<'a> {
@@ -27,7 +36,13 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
         Ok(())
     }
 
-    fn visit_break_stmt(&self, _wrapper: Rc<Stmt>, _stmt: &BreakStmt) -> Result<(), LoxResult> {
+    fn visit_break_stmt(&self, _wrapper: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), LoxResult> {
+        if !*self.in_while.borrow() {
+            self.error(
+                stmt.token.dup(),
+                "Break statement outside of a for/while loop",
+            )
+        }
         Ok(())
     }
 
@@ -47,7 +62,7 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     ) -> Result<(), LoxResult> {
         self.declare(&stmt.name);
         self.define(&stmt.name);
-        self.resolve_function(stmt)?;
+        self.resolve_function(stmt, FunctionType::Function)?;
         Ok(())
     }
 
@@ -66,6 +81,9 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     }
 
     fn visit_return_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
+        if *self.current_fun_type.borrow() == FunctionType::None {
+            self.error(stmt.keyword.dup(), "Can't return from top-level code.")
+        }
         if let Some(value) = stmt.value.clone() {
             self.resolve_expr(value)?;
         }
@@ -82,8 +100,10 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     }
 
     fn visit_while_stmt(&self, _wrapper: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), LoxResult> {
+        let previous_nesting = self.in_while.replace(true);
         self.resolve_expr(stmt.condition.clone())?;
         self.resolve_stmt(stmt.body.clone())?;
+        self.in_while.replace(previous_nesting);
         Ok(())
     }
 }
@@ -160,6 +180,9 @@ impl<'a> Resolver<'a> {
         Self {
             interpreter,
             scopes: RefCell::new(Vec::new()),
+            has_error: RefCell::new(false),
+            current_fun_type: RefCell::new(FunctionType::None),
+            in_while: RefCell::new(false),
         }
     }
 
@@ -178,7 +201,12 @@ impl<'a> Resolver<'a> {
         expr.accept(expr.clone(), self)
     }
 
-    fn resolve_function(&self, function: &FunctionStmt) -> Result<(), LoxResult> {
+    fn resolve_function(
+        &self,
+        function: &FunctionStmt,
+        func_type: FunctionType,
+    ) -> Result<(), LoxResult> {
+        let enclosing_func = self.current_fun_type.replace(func_type);
         self.begin_scope();
         for param in function.params.iter() {
             self.declare(param);
@@ -187,6 +215,7 @@ impl<'a> Resolver<'a> {
 
         self.resolve(&function.body)?;
         self.end_scope();
+        self.current_fun_type.replace(enclosing_func);
         Ok(())
     }
 
@@ -199,24 +228,20 @@ impl<'a> Resolver<'a> {
     }
 
     fn declare(&self, name: &Token) {
-        if !self.scopes.borrow().is_empty() {
-            self.scopes
-                .borrow()
-                .last()
-                .unwrap()
-                .borrow_mut()
-                .insert(name.as_string(), false);
+        if let Some(scope) = self.scopes.borrow().last() {
+            if scope.borrow().contains_key(&name.as_string()) {
+                self.error(
+                    name.dup(),
+                    "Already a variable with this name in this scope.",
+                );
+            }
+            scope.borrow_mut().insert(name.as_string(), false);
         }
     }
 
     fn define(&self, name: &Token) {
-        if !self.scopes.borrow().is_empty() {
-            self.scopes
-                .borrow()
-                .last()
-                .unwrap()
-                .borrow_mut()
-                .insert(name.as_string(), true);
+        if let Some(scope) = self.scopes.borrow().last() {
+            scope.borrow_mut().insert(name.as_string(), true);
         }
     }
 
@@ -227,5 +252,15 @@ impl<'a> Resolver<'a> {
                 return;
             }
         }
+    }
+
+    fn error(&self, token: Token, message: &str) {
+        self.has_error.replace(true);
+        let lox_err = LoxResult::parse_error(token, message);
+        lox_err.report()
+    }
+
+    pub fn success(&self) -> bool {
+        !self.has_error.borrow().clone()
     }
 }

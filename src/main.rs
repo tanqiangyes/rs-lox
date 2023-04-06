@@ -101,8 +101,12 @@ impl Lox {
         if parser.success() {
             let resolver = Resolver::new(&self.interpreter);
             resolver.resolve(&Rc::new(statements.clone()))?;
-            self.interpreter.interpret(statements);
-            Ok(())
+            if resolver.success() {
+                self.interpreter.interpret(statements);
+                Ok(())
+            } else {
+                Err(LoxResult::error(0, ""))
+            }
         } else {
             Err(LoxResult::error(0, ""))
         }

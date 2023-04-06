@@ -16,7 +16,6 @@ use std::rc::Rc;
 pub struct Interpreter {
     pub globals: Rc<RefCell<Environment>>,
     environment: RefCell<Rc<RefCell<Environment>>>,
-    nest: RefCell<usize>,
     locals: RefCell<HashMap<Rc<Expr>, usize>>,
 }
 
@@ -26,15 +25,8 @@ impl StmtVisitor<()> for Interpreter {
         self.execute_block(&stmt.statements, e)
     }
 
-    fn visit_break_stmt(&self, _: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), LoxResult> {
-        if *self.nest.borrow() == 0 {
-            Err(LoxResult::runtime_error(
-                stmt.token.dup(),
-                "break outside of  for/while loop",
-            ))
-        } else {
-            Err(LoxResult::Break)
-        }
+    fn visit_break_stmt(&self, _: Rc<Stmt>, _stmt: &BreakStmt) -> Result<(), LoxResult> {
+        Err(LoxResult::Break)
     }
 
     fn visit_expression_stmt(&self, _: Rc<Stmt>, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
@@ -92,7 +84,6 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_while_stmt(&self, _: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), LoxResult> {
-        *self.nest.borrow_mut() += 1;
         while self.is_truthy(self.evaluate(stmt.condition.clone())?) {
             match self.execute(stmt.body.clone()) {
                 Err(LoxResult::Break) => break,
@@ -100,7 +91,6 @@ impl StmtVisitor<()> for Interpreter {
                 Ok(_) => {}
             }
         }
-        *self.nest.borrow_mut() -= 1;
         Ok(())
     }
 }
@@ -315,7 +305,6 @@ impl Interpreter {
         Interpreter {
             globals: Rc::clone(&globals),
             environment: RefCell::new(Rc::clone(&globals)),
-            nest: RefCell::new(0),
             locals: RefCell::new(HashMap::new()),
         }
     }
@@ -361,7 +350,6 @@ impl Interpreter {
 
     pub fn interpret(&self, statements: Vec<Rc<Stmt>>) -> bool {
         let mut success = true;
-        *self.nest.borrow_mut() = 0;
         for statement in statements {
             if let Err(e) = self.execute(statement.clone()) {
                 e.report();

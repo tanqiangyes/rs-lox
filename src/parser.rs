@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
 
     fn statement(&mut self) -> Result<Stmt, LoxResult> {
         if self.is_match(&[TokenType::Break]) {
-            let token = self.peek().dup();
+            let token = self.previous().dup();
             self.consume(TokenType::SemiColon, "Expect ';' after 'break'.")?;
             return Ok(Stmt::Break(Rc::new(BreakStmt { token })));
         }
