@@ -261,6 +261,6 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn success(&self) -> bool {
-        !self.has_error.borrow().clone()
+        !*self.has_error.borrow()
     }
 }
