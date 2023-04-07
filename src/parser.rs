@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
     AssignExpr, BinaryExpr, CallExpr, Expr, GetExpr, GroupingExpr, LiteralExpr, LogicalExpr,
-    SetExpr, ThisExpr, UnaryExpr, VariableExpr,
+    SetExpr, SuperExpr, ThisExpr, UnaryExpr, VariableExpr,
 };
 use crate::object::Object;
 use crate::stmt::*;
@@ -59,6 +59,16 @@ impl<'a> Parser<'a> {
 
     fn class_declaration(&mut self) -> Result<Stmt, LoxResult> {
         let name = self.consume(TokenType::Identifier, "Expect a class name.")?;
+
+        let superclass = if self.is_match(&[TokenType::Less]) {
+            self.consume(TokenType::Identifier, "Expect super class name.")?;
+            Some(Rc::new(Expr::Variable(Rc::new(VariableExpr {
+                name: self.previous().dup(),
+            }))))
+        } else {
+            None
+        };
+
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
         let mut methods = Vec::new();
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
@@ -67,6 +77,7 @@ impl<'a> Parser<'a> {
         self.consume(TokenType::RightBrace, "Expect '}' before class body.")?;
         Ok(Stmt::Class(Rc::new(ClassStmt {
             name,
+            superclass,
             methods: Rc::new(methods),
         })))
     }
@@ -462,6 +473,13 @@ impl<'a> Parser<'a> {
             return Ok(Expr::Literal(Rc::new(LiteralExpr {
                 value: self.previous().dup().literal,
             })));
+        }
+
+        if self.is_match(&[TokenType::Super]) {
+            let keyword = self.previous().dup();
+            self.consume(TokenType::Dot, "Expect '.' after 'super'.")?;
+            let method = self.consume(TokenType::Dot, "Expect superclass method name.")?;
+            return Ok(Expr::Super(Rc::new(SuperExpr { keyword, method })));
         }
 
         if self.is_match(&[TokenType::This]) {

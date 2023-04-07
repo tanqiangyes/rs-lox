@@ -11,15 +11,30 @@ use std::rc::Rc;
 pub struct LoxClass {
     name: String,
     methods: HashMap<String, Object>,
+    superclass: Option<Rc<LoxClass>>,
 }
 
 impl LoxClass {
-    pub fn new(name: String, methods: HashMap<String, Object>) -> Self {
-        Self { name, methods }
+    pub fn new(
+        name: String,
+        superclass: Option<Rc<LoxClass>>,
+        methods: HashMap<String, Object>,
+    ) -> Self {
+        Self {
+            name,
+            methods,
+            superclass,
+        }
     }
 
     pub fn find_method(&self, name: &String) -> Option<Object> {
-        self.methods.get(name).cloned()
+        if let Some(obj) = self.methods.get(name).cloned() {
+            Some(obj)
+        } else if let Some(superclass) = self.superclass.clone() {
+            superclass.find_method(name)
+        } else {
+            None
+        }
     }
 }
 

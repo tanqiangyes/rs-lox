@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
     AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr,
-    LogicalExpr, SetExpr, ThisExpr, UnaryExpr, VariableExpr,
+    LogicalExpr, SetExpr, SuperExpr, ThisExpr, UnaryExpr, VariableExpr,
 };
 use crate::interpreter::Interpreter;
 use crate::stmt::{
@@ -51,6 +51,18 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
 
         self.declare(&stmt.name);
         self.define(&stmt.name);
+
+        if let Some(superclass) = stmt.superclass.clone() {
+            if let Expr::Variable(sup) = superclass.clone().as_ref() {
+                if stmt.name.as_string().eq(&sup.name.as_string()) {
+                    self.error(stmt.name.dup(), "A class cannot inherit from itself");
+                } else {
+                    self.resolve_expr(superclass.clone())?;
+                }
+            } else {
+                self.error(stmt.name.dup(), "Get superclass name failed.");
+            }
+        }
 
         self.begin_scope();
         self.scopes
@@ -207,6 +219,11 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
     fn visit_set_expr(&self, _wrapper: Rc<Expr>, expr: &SetExpr) -> Result<(), LoxResult> {
         self.resolve_expr(expr.value.clone())?;
         self.resolve_expr(expr.object.clone())?;
+        Ok(())
+    }
+
+    fn visit_super_expr(&self, wrapper: Rc<Expr>, expr: &SuperExpr) -> Result<(), LoxResult> {
+        self.resolve_local(wrapper, &expr.keyword);
         Ok(())
     }
 

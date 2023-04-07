@@ -28,6 +28,19 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_class_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        let sup = if let Some(superclass) = stmt.superclass.clone() {
+            if let Object::Class(sup) = self.evaluate(superclass)? {
+                Some(sup)
+            } else {
+                return Err(LoxResult::runtime_error(
+                    stmt.name.dup(),
+                    "Superclass must be a class.",
+                ));
+            }
+        } else {
+            None
+        };
+
         self.environment
             .borrow()
             .borrow_mut()
@@ -50,7 +63,7 @@ impl StmtVisitor<()> for Interpreter {
                 ));
             }
         }
-        let klass = Rc::new(LoxClass::new(stmt.name.as_string(), methods));
+        let klass = Rc::new(LoxClass::new(stmt.name.as_string(), sup, methods));
         self.environment
             .borrow()
             .borrow_mut()
@@ -334,6 +347,10 @@ impl ExprVisitor<Object> for Interpreter {
                 "Only instances have fields.",
             ))
         }
+    }
+
+    fn visit_super_expr(&self, _wrapper: Rc<Expr>, _expr: &SuperExpr) -> Result<Object, LoxResult> {
+        todo!()
     }
 
     fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<Object, LoxResult> {
