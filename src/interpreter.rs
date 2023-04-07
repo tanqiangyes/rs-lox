@@ -4,7 +4,7 @@ use crate::error::*;
 use crate::expr::*;
 use crate::lox_class::LoxClass;
 use crate::lox_function::LoxFunction;
-use crate::native_functions::*;
+// use crate::native_functions::*;
 use crate::object::*;
 use crate::stmt::*;
 use crate::token::Token;
@@ -36,9 +36,12 @@ impl StmtVisitor<()> for Interpreter {
         let mut methods = HashMap::new();
         for method in stmt.methods.deref() {
             if let Stmt::Function(func) = method.deref() {
-                let function = Object::Func(Callable {
-                    func: Rc::new(LoxFunction::new(func, &self.environment.borrow())),
-                });
+                let is_init = func.name.as_string() == "init";
+                let function = Object::Func(Rc::new(LoxFunction::new(
+                    func,
+                    &self.environment.borrow(),
+                    is_init,
+                )));
                 methods.insert(func.name.as_string(), function);
             } else {
                 return Err(LoxResult::runtime_error(
@@ -65,13 +68,11 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_function_stmt(&self, _: Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), LoxResult> {
-        let function = LoxFunction::new(stmt, &self.environment.borrow());
-        self.environment.borrow().borrow_mut().define(
-            stmt.name.as_string(),
-            Object::Func(Callable {
-                func: Rc::new(function),
-            }),
-        );
+        let function = LoxFunction::new(stmt, &self.environment.borrow(), false);
+        self.environment
+            .borrow()
+            .borrow_mut()
+            .define(stmt.name.as_string(), Object::Func(Rc::new(function)));
         Ok(())
     }
 
@@ -255,31 +256,28 @@ impl ExprVisitor<Object> for Interpreter {
             arguments.push(self.evaluate(argument)?);
         }
 
-        if let Object::Func(function) = callee {
-            if arguments.len() != function.func.arity() {
+        let (callfunc, klass): (Option<Rc<dyn LoxCallable>>, Option<Rc<LoxClass>>) = match callee {
+            Object::Func(f) => (Some(f), None),
+            // Object::Native(n) => (Some(n.func.clone()), None),
+            Object::Class(c) => {
+                let klass = Rc::clone(&c);
+                (Some(c), Some(klass))
+            }
+            _ => (None, None),
+        };
+
+        if let Some(callfunc) = callfunc {
+            if arguments.len() != callfunc.arity() {
                 return Err(LoxResult::runtime_error(
                     expr.paren.dup(),
                     &format!(
-                        "Expect {} arguments but got {}.",
-                        function.func.arity(),
+                        "Expected {} arguments but got {}.",
+                        callfunc.arity(),
                         arguments.len()
                     ),
                 ));
             }
-            function.func.call(self, arguments)
-        } else if let Object::Class(klass) = callee {
-            if arguments.len() != klass.arity() {
-                return Err(LoxResult::runtime_error(
-                    expr.paren.dup(),
-                    &format!(
-                        "Expect {} arguments but got {}.",
-                        klass.arity(),
-                        arguments.len()
-                    ),
-                ));
-            }
-            klass.instantiate(self, arguments, Rc::clone(&klass))
-            // klass.call(self, arguments)
+            callfunc.call(self, arguments, klass)
         } else {
             Err(LoxResult::runtime_error(
                 expr.paren.dup(),
@@ -291,7 +289,7 @@ impl ExprVisitor<Object> for Interpreter {
     fn visit_get_expr(&self, _wrapper: Rc<Expr>, expr: &GetExpr) -> Result<Object, LoxResult> {
         let object = self.evaluate(expr.object.clone())?;
         if let Object::Instance(instance) = object {
-            instance.get(&expr.name)
+            instance.get(&expr.name, &instance)
         } else {
             Err(LoxResult::runtime_error(
                 expr.name.dup(),
@@ -338,6 +336,10 @@ impl ExprVisitor<Object> for Interpreter {
         }
     }
 
+    fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<Object, LoxResult> {
+        self.look_up_variable(&expr.keyword, wrapper)
+    }
+
     fn visit_unary_expr(&self, _: Rc<Expr>, expr: &UnaryExpr) -> Result<Object, LoxResult> {
         let right = self.evaluate(expr.right.clone())?;
 
@@ -366,12 +368,10 @@ impl ExprVisitor<Object> for Interpreter {
 impl Interpreter {
     pub fn new() -> Interpreter {
         let globals = Rc::new(RefCell::new(Environment::new()));
-        globals.borrow_mut().define(
-            "clock".to_string(),
-            Object::Func(Callable {
-                func: Rc::new(NativeClock {}),
-            }),
-        );
+        // globals.borrow_mut().define(
+        //     "clock".to_string(),
+        //     Object::Func( Rc::new(NativeClock {})),
+        // );
         Interpreter {
             globals: Rc::clone(&globals),
             environment: RefCell::new(Rc::clone(&globals)),

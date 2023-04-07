@@ -1,7 +1,9 @@
 use crate::callable::LoxCallable;
 use crate::error::LoxResult;
 use crate::interpreter::Interpreter;
+use crate::lox_class::LoxClass;
 use crate::object::Object;
+use std::rc::Rc;
 use std::time::SystemTime;
 
 // --------------------------------------------Native functions ----------------------------------------------------------------
@@ -11,6 +13,7 @@ impl LoxCallable for NativeClock {
         &self,
         _interpreter: &Interpreter,
         _arguments: Vec<Object>,
+        _klass: Option<Rc<LoxClass>>,
     ) -> Result<Object, LoxResult> {
         match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
             Ok(times) => Ok(Object::Num(times.as_millis() as f64)),
@@ -23,10 +26,6 @@ impl LoxCallable for NativeClock {
 
     fn arity(&self) -> usize {
         0
-    }
-
-    fn to_string(&self) -> String {
-        "<native clock>".to_string()
     }
 }
 // -----------------------------------------------------------------------------------------------------------------------------

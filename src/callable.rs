@@ -1,6 +1,8 @@
 use crate::error::LoxResult;
 use crate::interpreter::Interpreter;
+use crate::lox_class::LoxClass;
 use crate::object::Object;
+use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
@@ -10,33 +12,38 @@ pub struct Callable {
 }
 
 pub trait LoxCallable {
-    fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult>;
+    fn call(
+        &self,
+        interpreter: &Interpreter,
+        arguments: Vec<Object>,
+        klass: Option<Rc<LoxClass>>,
+    ) -> Result<Object, LoxResult>;
     fn arity(&self) -> usize;
-    fn to_string(&self) -> String;
-}
-
-impl Display for dyn LoxCallable {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
 }
 
 impl LoxCallable for Callable {
-    fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult> {
-        self.func.call(interpreter, arguments)
+    fn call(
+        &self,
+        interpreter: &Interpreter,
+        arguments: Vec<Object>,
+        klass: Option<Rc<LoxClass>>,
+    ) -> Result<Object, LoxResult> {
+        self.func.call(interpreter, arguments, klass)
     }
 
     fn arity(&self) -> usize {
         self.func.arity()
     }
+}
 
-    fn to_string(&self) -> String {
-        self.func.to_string()
+impl Display for Callable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "<callable>")
     }
 }
 
 impl Debug for Callable {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "<callable>")
     }
 }

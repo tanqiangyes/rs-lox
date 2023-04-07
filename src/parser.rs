@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
     AssignExpr, BinaryExpr, CallExpr, Expr, GetExpr, GroupingExpr, LiteralExpr, LogicalExpr,
-    SetExpr, UnaryExpr, VariableExpr,
+    SetExpr, ThisExpr, UnaryExpr, VariableExpr,
 };
 use crate::object::Object;
 use crate::stmt::*;
@@ -461,6 +461,12 @@ impl<'a> Parser<'a> {
         if self.is_match(&[TokenType::String, TokenType::Number]) {
             return Ok(Expr::Literal(Rc::new(LiteralExpr {
                 value: self.previous().dup().literal,
+            })));
+        }
+
+        if self.is_match(&[TokenType::This]) {
+            return Ok(Expr::This(Rc::new(ThisExpr {
+                keyword: self.previous().dup(),
             })));
         }
 

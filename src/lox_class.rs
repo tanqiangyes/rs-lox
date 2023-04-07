@@ -18,14 +18,14 @@ impl LoxClass {
         Self { name, methods }
     }
 
-    pub fn instantiate(
-        &self,
-        _interpreter: &Interpreter,
-        _arguments: Vec<Object>,
-        klass: Rc<LoxClass>,
-    ) -> Result<Object, LoxResult> {
-        Ok(Object::Instance(Rc::new(LoxInstance::new(klass))))
-    }
+    // pub fn instantiate(
+    //     &self,
+    //     _interpreter: &Interpreter,
+    //     _arguments: Vec<Object>,
+    //     klass: Option<Rc<LoxClass>>,
+    // ) -> Result<Object, LoxResult> {
+    //     Ok(Object::Instance(Rc::new(LoxInstance::new(klass.unwrap()))))
+    // }
 
     pub fn find_method(&self, name: &String) -> Option<Object> {
         self.methods.get(name).cloned()
@@ -34,7 +34,13 @@ impl LoxClass {
 
 impl fmt::Display for LoxClass {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name)
+        let methods = self
+            .methods
+            .keys()
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(", ");
+        write!(f, "<Class {} {{ {methods} }}>", self.name)
     }
 }
 
@@ -43,17 +49,12 @@ impl LoxCallable for LoxClass {
         &self,
         _interpreter: &Interpreter,
         _arguments: Vec<Object>,
+        klass: Option<Rc<LoxClass>>,
     ) -> Result<Object, LoxResult> {
-        Ok(Object::Instance(Rc::new(LoxInstance::new(Rc::new(
-            self.clone(),
-        )))))
+        Ok(Object::Instance(Rc::new(LoxInstance::new(klass.unwrap()))))
     }
 
     fn arity(&self) -> usize {
         0
-    }
-
-    fn to_string(&self) -> String {
-        self.name.clone()
     }
 }

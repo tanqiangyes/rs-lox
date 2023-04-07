@@ -22,11 +22,19 @@ impl LoxInstance {
         }
     }
 
-    pub fn get(&self, name: &Token) -> Result<Object, LoxResult> {
+    pub fn get(&self, name: &Token, this: &Rc<LoxInstance>) -> Result<Object, LoxResult> {
         if let Entry::Occupied(o) = self.fields.borrow_mut().entry(name.as_string()) {
             Ok(o.get().clone())
         } else if let Some(method) = self.klass.find_method(&name.as_string()) {
-            Ok(method)
+            // Ok(method.bind(self))
+            if let Object::Func(func) = method {
+                return Ok(func.bind(&Object::Instance(Rc::clone(this))));
+            } else {
+                Err(LoxResult::runtime_error(
+                    name.dup(),
+                    &format!("Tried to bind 'this' to a non-function {}.", method),
+                ))
+            }
         } else {
             Err(LoxResult::runtime_error(
                 name.dup(),
@@ -42,6 +50,17 @@ impl LoxInstance {
 
 impl fmt::Display for LoxInstance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", &self.klass)
+        let mut fields = Vec::new();
+
+        for (k, v) in self.fields.borrow().iter() {
+            fields.push(format!("{k}={v}"))
+        }
+
+        write!(
+            f,
+            "<Instance of {} {{ {} }}>",
+            self.klass.to_string(),
+            fields.join(", ")
+        )
     }
 }

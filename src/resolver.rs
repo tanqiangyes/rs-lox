@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
     AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr,
-    LogicalExpr, SetExpr, UnaryExpr, VariableExpr,
+    LogicalExpr, SetExpr, ThisExpr, UnaryExpr, VariableExpr,
 };
 use crate::interpreter::Interpreter;
 use crate::stmt::{
@@ -28,6 +28,7 @@ enum FunctionType {
     None,
     Function,
     Method,
+    Initializer,
 }
 
 impl<'a> StmtVisitor<()> for Resolver<'a> {
@@ -42,10 +43,22 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
         self.declare(&stmt.name);
         self.define(&stmt.name);
 
+        self.begin_scope();
+        self.scopes
+            .borrow()
+            .last()
+            .unwrap()
+            .borrow_mut()
+            .insert("this".to_string(), true);
+
         for method in stmt.methods.deref() {
-            let declaration = FunctionType::Method;
             if let Stmt::Function(method) = method.deref() {
-                self.resolve_function(&method, declaration)?;
+                let declaration = if method.name.as_string() == "init" {
+                    FunctionType::Initializer
+                } else {
+                    FunctionType::Method
+                };
+                self.resolve_function(method, declaration)?;
             } else {
                 return Err(LoxResult::runtime_error(
                     stmt.name.dup(),
@@ -53,6 +66,8 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
                 ));
             }
         }
+
+        self.end_scope();
         Ok(())
     }
 
@@ -105,6 +120,12 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
             self.error(stmt.keyword.dup(), "Can't return from top-level code.")
         }
         if let Some(value) = stmt.value.clone() {
+            if *self.current_fun_type.borrow() == FunctionType::Initializer {
+                self.error(
+                    stmt.keyword.dup(),
+                    "Can't return a value from an initializer.",
+                )
+            }
             self.resolve_expr(value)?;
         }
         Ok(())
@@ -176,6 +197,11 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
     fn visit_set_expr(&self, _wrapper: Rc<Expr>, expr: &SetExpr) -> Result<(), LoxResult> {
         self.resolve_expr(expr.value.clone())?;
         self.resolve_expr(expr.object.clone())?;
+        Ok(())
+    }
+
+    fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<(), LoxResult> {
+        self.resolve_local(wrapper, &expr.keyword);
         Ok(())
     }
 
