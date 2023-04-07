@@ -1,6 +1,7 @@
 use crate::lox_class::LoxClass;
 use crate::lox_function::LoxFunction;
 use crate::lox_instance::LoxInstance;
+use crate::native_functions::LoxNative;
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
@@ -15,7 +16,7 @@ pub enum Object {
     Func(Rc<LoxFunction>),
     Class(Rc<LoxClass>),
     Instance(Rc<LoxInstance>),
-    // Native(Rc<LoxNative>),
+    Native(Rc<LoxNative>),
     Nil,
     ArithmeticError,
 }
@@ -32,10 +33,10 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
-            Object::Func(n) => write!(f, "{}", n.to_string()),
-            Object::Class(n) => write!(f, "{}", n.to_string()),
-            Object::Instance(n) => write!(f, "{}", n.to_string()),
-            // Object::Native(n) => write!(f, "{}", n.to_string()),
+            Object::Func(n) => write!(f, "{}", n),
+            Object::Class(n) => write!(f, "{}", n),
+            Object::Instance(n) => write!(f, "{}", n),
+            Object::Native(n) => write!(f, "{}", n),
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
         }

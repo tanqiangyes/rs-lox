@@ -20,6 +20,7 @@ pub struct Resolver<'a> {
     scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
     has_error: RefCell<bool>,
     current_fun_type: RefCell<FunctionType>,
+    current_class_type: RefCell<ClassType>,
     in_while: RefCell<bool>,
 }
 
@@ -31,6 +32,12 @@ enum FunctionType {
     Initializer,
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum ClassType {
+    None,
+    Class,
+}
+
 impl<'a> StmtVisitor<()> for Resolver<'a> {
     fn visit_block_stmt(&self, _wrapper: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), LoxResult> {
         self.begin_scope();
@@ -40,6 +47,8 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     }
 
     fn visit_class_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        let enclosing_class = self.current_class_type.replace(ClassType::Class);
+
         self.declare(&stmt.name);
         self.define(&stmt.name);
 
@@ -68,6 +77,7 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
         }
 
         self.end_scope();
+        self.current_class_type.replace(enclosing_class);
         Ok(())
     }
 
@@ -201,6 +211,9 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
     }
 
     fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<(), LoxResult> {
+        if *self.current_class_type.borrow() == ClassType::None {
+            self.error(expr.keyword.dup(), "Can't use 'this' outside a class.");
+        }
         self.resolve_local(wrapper, &expr.keyword);
         Ok(())
     }
@@ -239,6 +252,7 @@ impl<'a> Resolver<'a> {
             scopes: RefCell::new(Vec::new()),
             has_error: RefCell::new(false),
             current_fun_type: RefCell::new(FunctionType::None),
+            current_class_type: RefCell::new(ClassType::None),
             in_while: RefCell::new(false),
         }
     }
