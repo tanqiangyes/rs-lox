@@ -36,6 +36,7 @@ enum FunctionType {
 enum ClassType {
     None,
     Class,
+    SubClass,
 }
 
 impl<'a> StmtVisitor<()> for Resolver<'a> {
@@ -57,7 +58,15 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
                 if stmt.name.as_string().eq(&sup.name.as_string()) {
                     self.error(stmt.name.dup(), "A class cannot inherit from itself");
                 } else {
+                    self.current_class_type.replace(ClassType::SubClass);
                     self.resolve_expr(superclass.clone())?;
+                    self.begin_scope();
+                    self.scopes
+                        .borrow()
+                        .last()
+                        .unwrap()
+                        .borrow_mut()
+                        .insert("super".to_string(), true);
                 }
             } else {
                 self.error(stmt.name.dup(), "Get superclass name failed.");
@@ -89,6 +98,9 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
         }
 
         self.end_scope();
+        if stmt.superclass.is_some() {
+            self.end_scope();
+        }
         self.current_class_type.replace(enclosing_class);
         Ok(())
     }
@@ -223,6 +235,14 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
     }
 
     fn visit_super_expr(&self, wrapper: Rc<Expr>, expr: &SuperExpr) -> Result<(), LoxResult> {
+        if self.current_class_type.borrow().clone() == ClassType::None {
+            self.error(expr.keyword.dup(), "Can`t use super outside of a class.");
+        } else if self.current_class_type.borrow().clone() != ClassType::SubClass {
+            self.error(
+                expr.keyword.dup(),
+                "Can`t use 'super' in a class whit no superclass.",
+            )
+        }
         self.resolve_local(wrapper, &expr.keyword);
         Ok(())
     }

@@ -46,6 +46,15 @@ impl StmtVisitor<()> for Interpreter {
             .borrow_mut()
             .define(stmt.name.as_string(), Object::Nil);
 
+        let enclosing = if let Some(superclass) = sup.clone() {
+            let mut environment =
+                Environment::new_with_enclosing(self.environment.borrow().clone());
+            environment.define("super".to_string(), Object::Class(superclass));
+            Some(self.environment.replace(Rc::new(RefCell::new(environment))))
+        } else {
+            None
+        };
+
         let mut methods = HashMap::new();
         for method in stmt.methods.deref() {
             if let Stmt::Function(func) = method.deref() {
@@ -64,6 +73,11 @@ impl StmtVisitor<()> for Interpreter {
             }
         }
         let klass = Rc::new(LoxClass::new(stmt.name.as_string(), sup, methods));
+
+        if let Some(enclosing) = enclosing {
+            self.environment.replace(enclosing);
+        }
+
         self.environment
             .borrow()
             .borrow_mut()
@@ -349,8 +363,46 @@ impl ExprVisitor<Object> for Interpreter {
         }
     }
 
-    fn visit_super_expr(&self, _wrapper: Rc<Expr>, _expr: &SuperExpr) -> Result<Object, LoxResult> {
-        todo!()
+    fn visit_super_expr(&self, wrapper: Rc<Expr>, expr: &SuperExpr) -> Result<Object, LoxResult> {
+        let local_borrow = self.locals.borrow();
+        let distance = *local_borrow.get(&wrapper).unwrap();
+        let superclass_obj = self
+            .environment
+            .borrow()
+            .borrow()
+            .get_at(distance, "super")?;
+        let superclass = if let Object::Class(superclass_obj) = superclass_obj {
+            superclass_obj
+        } else {
+            return Err(LoxResult::runtime_error(
+                expr.method.dup(),
+                "Cannot find superclass",
+            ));
+        };
+        let object = self
+            .environment
+            .borrow()
+            .borrow()
+            .get_at(distance - 1, "this")?;
+        if let Some(method) = superclass.find_method(&expr.method.as_string()) {
+            if let Object::Func(func) = method.clone() {
+                Ok(func.bind(&object))
+            } else {
+                return Err(LoxResult::runtime_error(
+                    expr.method.dup(),
+                    &format!("Properties '{}' not a method.", expr.method.as_string()),
+                ));
+            }
+        } else {
+            return Err(LoxResult::runtime_error(
+                expr.method.dup(),
+                &format!(
+                    "Undefined method '{}' in superclass '{}'.",
+                    expr.method.as_string(),
+                    superclass
+                ),
+            ));
+        }
     }
 
     fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<Object, LoxResult> {
