@@ -31,11 +31,11 @@ impl StmtVisitor<()> for Interpreter {
             .borrow()
             .borrow_mut()
             .define(stmt.name.as_string(), Object::Nil);
-        let klass = LoxClass::new(stmt.name.as_string());
+        let klass = Rc::new(LoxClass::new(stmt.name.as_string()));
         self.environment
             .borrow()
             .borrow_mut()
-            .assign(&stmt.name, Object::Class(klass))?;
+            .assign(&stmt.name, Object::Class(Rc::clone(&klass)))?;
         Ok(())
     }
 
@@ -251,10 +251,35 @@ impl ExprVisitor<Object> for Interpreter {
                 ));
             }
             function.func.call(self, arguments)
+        } else if let Object::Class(klass) = callee {
+            if arguments.len() != klass.arity() {
+                return Err(LoxResult::runtime_error(
+                    expr.paren.dup(),
+                    &format!(
+                        "Expect {} arguments but got {}.",
+                        klass.arity(),
+                        arguments.len()
+                    ),
+                ));
+            }
+            klass.instantiate(self, arguments, Rc::clone(&klass))
+            // klass.call(self, arguments)
         } else {
             Err(LoxResult::runtime_error(
                 expr.paren.dup(),
                 "Can only call functions and classes.",
+            ))
+        }
+    }
+
+    fn visit_get_expr(&self, _wrapper: Rc<Expr>, expr: &GetExpr) -> Result<Object, LoxResult> {
+        let object = self.evaluate(expr.object.clone())?;
+        if let Object::Instance(instance) = object {
+            instance.get(&expr.name)
+        } else {
+            Err(LoxResult::runtime_error(
+                expr.name.dup(),
+                "Only instances have properties.",
             ))
         }
     }
@@ -280,6 +305,21 @@ impl ExprVisitor<Object> for Interpreter {
             return Ok(left);
         }
         self.evaluate(expr.right.clone())
+    }
+
+    fn visit_set_expr(&self, _wrapper: Rc<Expr>, expr: &SetExpr) -> Result<Object, LoxResult> {
+        let object = self.evaluate(expr.object.clone())?;
+
+        if let Object::Instance(instance) = object {
+            let value = self.evaluate(expr.value.clone())?;
+            instance.set(&expr.name, value.clone());
+            Ok(value)
+        } else {
+            Err(LoxResult::runtime_error(
+                expr.name.dup(),
+                "Only instances have fields.",
+            ))
+        }
     }
 
     fn visit_unary_expr(&self, _: Rc<Expr>, expr: &UnaryExpr) -> Result<Object, LoxResult> {

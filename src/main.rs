@@ -12,6 +12,7 @@ mod expr;
 mod interpreter;
 mod lox_class;
 mod lox_function;
+mod lox_instance;
 mod native_functions;
 mod object;
 mod parser;

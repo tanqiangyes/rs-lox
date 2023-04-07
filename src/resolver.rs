@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
-    AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GroupingExpr, LiteralExpr, LogicalExpr,
-    UnaryExpr, VariableExpr,
+    AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr,
+    LogicalExpr, SetExpr, UnaryExpr, VariableExpr,
 };
 use crate::interpreter::Interpreter;
 use crate::stmt::{
@@ -135,6 +135,11 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
         Ok(())
     }
 
+    fn visit_get_expr(&self, _wrapper: Rc<Expr>, expr: &GetExpr) -> Result<(), LoxResult> {
+        self.resolve_expr(expr.object.clone())?;
+        Ok(())
+    }
+
     fn visit_grouping_expr(
         &self,
         _wrapper: Rc<Expr>,
@@ -151,6 +156,12 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
     fn visit_logical_expr(&self, _wrapper: Rc<Expr>, expr: &LogicalExpr) -> Result<(), LoxResult> {
         self.resolve_expr(expr.left.clone())?;
         self.resolve_expr(expr.right.clone())?;
+        Ok(())
+    }
+
+    fn visit_set_expr(&self, _wrapper: Rc<Expr>, expr: &SetExpr) -> Result<(), LoxResult> {
+        self.resolve_expr(expr.value.clone())?;
+        self.resolve_expr(expr.object.clone())?;
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 use crate::error::LoxResult;
 use crate::expr::{
-    AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr,
-    VariableExpr,
+    AssignExpr, BinaryExpr, CallExpr, Expr, GetExpr, GroupingExpr, LiteralExpr, LogicalExpr,
+    SetExpr, UnaryExpr, VariableExpr,
 };
 use crate::object::Object;
 use crate::stmt::*;
@@ -280,6 +280,12 @@ impl<'a> Parser<'a> {
                     name: expr.name.dup(),
                     value: Rc::new(value),
                 })));
+            } else if let Expr::Get(get) = expr {
+                return Ok(Expr::Set(Rc::new(SetExpr {
+                    object: get.object.clone(),
+                    name: get.name.dup(),
+                    value: Rc::new(value),
+                })));
             }
             self.error(equals, "Invalid assignment target.");
         }
@@ -400,6 +406,13 @@ impl<'a> Parser<'a> {
         loop {
             if self.is_match(&[TokenType::LeftParen]) {
                 expr = self.finish_call(Rc::new(expr))?;
+            } else if self.is_match(&[TokenType::Dot]) {
+                let name =
+                    self.consume(TokenType::Identifier, "Expect property name after '.'.")?;
+                expr = Expr::Get(Rc::new(GetExpr {
+                    object: Rc::new(expr),
+                    name,
+                }));
             } else {
                 break;
             }

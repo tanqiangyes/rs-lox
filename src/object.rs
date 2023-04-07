@@ -1,9 +1,11 @@
 use crate::callable::{Callable, LoxCallable};
 use crate::lox_class::LoxClass;
+use crate::lox_instance::LoxInstance;
 use std::cmp::*;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::*;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -11,7 +13,8 @@ pub enum Object {
     Str(String),
     Bool(bool),
     Func(Callable),
-    Class(LoxClass),
+    Class(Rc<LoxClass>),
+    Instance(Rc<LoxInstance>),
     Nil,
     ArithmeticError,
 }
@@ -29,7 +32,8 @@ impl fmt::Display for Object {
                 }
             }
             Object::Func(n) => write!(f, "<func {}>", n.to_string()),
-            Object::Class(n) => write!(f, "<class {}>", n.to_string()),
+            Object::Class(n) => write!(f, "<class {n}>"),
+            Object::Instance(n) => write!(f, "instance {n}"),
             Object::Nil => write!(f, "nil"),
             Object::ArithmeticError => panic!("Should not be trying to print this object"),
         }
