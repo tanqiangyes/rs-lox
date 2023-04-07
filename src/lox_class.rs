@@ -3,17 +3,19 @@ use crate::error::LoxResult;
 use crate::interpreter::Interpreter;
 use crate::lox_instance::LoxInstance;
 use crate::object::Object;
+use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LoxClass {
     name: String,
+    methods: HashMap<String, Object>,
 }
 
 impl LoxClass {
-    pub fn new(name: String) -> Self {
-        Self { name }
+    pub fn new(name: String, methods: HashMap<String, Object>) -> Self {
+        Self { name, methods }
     }
 
     pub fn instantiate(
@@ -23,6 +25,10 @@ impl LoxClass {
         klass: Rc<LoxClass>,
     ) -> Result<Object, LoxResult> {
         Ok(Object::Instance(Rc::new(LoxInstance::new(klass))))
+    }
+
+    pub fn find_method(&self, name: &String) -> Option<Object> {
+        self.methods.get(name).cloned()
     }
 }
 

@@ -11,6 +11,7 @@ use crate::token::Token;
 use crate::token_type::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -31,7 +32,22 @@ impl StmtVisitor<()> for Interpreter {
             .borrow()
             .borrow_mut()
             .define(stmt.name.as_string(), Object::Nil);
-        let klass = Rc::new(LoxClass::new(stmt.name.as_string()));
+
+        let mut methods = HashMap::new();
+        for method in stmt.methods.deref() {
+            if let Stmt::Function(func) = method.deref() {
+                let function = Object::Func(Callable {
+                    func: Rc::new(LoxFunction::new(func, &self.environment.borrow())),
+                });
+                methods.insert(func.name.as_string(), function);
+            } else {
+                return Err(LoxResult::runtime_error(
+                    stmt.name.dup(),
+                    "Non-function method in class.",
+                ));
+            }
+        }
+        let klass = Rc::new(LoxClass::new(stmt.name.as_string(), methods));
         self.environment
             .borrow()
             .borrow_mut()

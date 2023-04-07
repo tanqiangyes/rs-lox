@@ -8,6 +8,7 @@ use crate::token::Token;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct LoxFunction {
     name: Token,
     params: Rc<Vec<Token>>,
