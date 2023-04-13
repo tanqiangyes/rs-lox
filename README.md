@@ -1,5 +1,5 @@
 # rs-lox
-AST version of the Lox interpreter in Rust.
+AST version of the Lox interpreter in Rust.(there have some thing need to do, but have no time, will fix it as soon.)
 
 # Source of book
 you can read the book at [crafting interpreters](http://craftinginterpreters.com/contents.html), if you not good at english, you can read the book at [手写编译器](https://readonly.link/books/https://raw.githubusercontent.com/GuoYaxiang/craftinginterpreters_zh/main/book.json?front-matter=contents)
